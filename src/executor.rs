@@ -327,12 +327,6 @@ fn compile(
     let object = output_dir.join(format!("{stem}.o"));
     let depfile = output_dir.join(format!("{stem}.d"));
     if object_needs_build(&object, source, &depfile) {
-        if crate::rider::for_source(source).is_none() {
-            return Err(Error::Config(format!(
-                "no Rider recognizes source '{}'",
-                source.display()
-            )));
-        }
         let compiler = if target.kind == TargetKind::CppExecutable
             || crate::rider::for_source(source)
                 .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
