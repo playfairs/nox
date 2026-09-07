@@ -133,7 +133,7 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             command.args(args).args(&objects).arg("-o").arg(&output);
             run(command)?;
         }
-        TargetKind::Executable => {
+        TargetKind::Executable | TargetKind::CppExecutable => {
             let linker = linker_for_target(target, &state.linker);
             let mut command = Command::new(linker);
             command.args(args).args(&objects);
@@ -333,8 +333,9 @@ fn compile(
                 source.display()
             )));
         }
-        let compiler = if crate::rider::for_source(source)
-            .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
+        let compiler = if target.kind == TargetKind::CppExecutable
+            || crate::rider::for_source(source)
+                .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
         {
             crate::toolchain::detect_cpp()
         } else {
@@ -392,10 +393,12 @@ pub fn target_artifact_path(directory: &Path, target: &Target) -> PathBuf {
 }
 
 fn linker_for_target(target: &Target, c_linker: &str) -> String {
-    if target.sources.iter().any(|source| {
-        crate::rider::for_source(source)
-            .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
-    }) {
+    if target.kind == TargetKind::CppExecutable
+        || target.sources.iter().any(|source| {
+            crate::rider::for_source(source)
+                .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
+        })
+    {
         crate::toolchain::detect_cpp()
     } else {
         c_linker.to_string()

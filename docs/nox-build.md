@@ -132,6 +132,14 @@ executable "app" {
 }
 ```
 
+Use `cxx_executable` when the target should always use the C++ compiler and linker, regardless of source extension:
+
+```text
+cxx_executable "app" {
+    sources = ["src/main.cpp"]
+}
+```
+
 ### Other language executables
 
 The generic `executable` target selects its Rider from the source extension:

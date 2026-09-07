@@ -141,6 +141,7 @@ impl<'a> Parser<'a> {
                     dependencies = self.strings()?;
                 }
                 "executable" => targets.push(self.target(TargetKind::Executable)?),
+                "cxx_executable" => targets.push(self.target(TargetKind::CppExecutable)?),
                 "static_library" | "static" => {
                     targets.push(self.target(TargetKind::StaticLibrary)?)
                 }
@@ -347,4 +348,28 @@ fn expand_glob(root: &Path, pattern: &str) -> Result<Vec<String>> {
     }
     results.sort();
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse;
+    use crate::model::TargetKind;
+    use std::path::Path;
+
+    #[test]
+    fn parses_cxx_executable_target() {
+        let project = parse(
+            r#"
+                project "example" {
+                    cxx_executable "app" {
+                        sources = ["main.cpp"]
+                    }
+                }
+            "#,
+            Path::new("."),
+        )
+        .expect("cxx_executable should parse");
+
+        assert_eq!(project.targets[0].kind, TargetKind::CppExecutable);
+    }
 }
