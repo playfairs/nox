@@ -7,6 +7,7 @@ pub enum TargetKind {
     SharedLibrary,
     RustExecutable,
     RustLibrary,
+    DExecutable,
 }
 
 #[derive(Clone, Debug)]

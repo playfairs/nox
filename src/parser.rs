@@ -149,6 +149,7 @@ impl<'a> Parser<'a> {
                 }
                 "rust_executable" => targets.push(self.target(TargetKind::RustExecutable)?),
                 "rust_library" => targets.push(self.target(TargetKind::RustLibrary)?),
+                "d_executable" => targets.push(self.target(TargetKind::DExecutable)?),
                 unknown => return Err(Error::Parse(format!("unknown project member '{unknown}'"))),
             }
         }

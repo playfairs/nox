@@ -27,22 +27,42 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
     fs::create_dir_all(&output_dir)?;
     if matches!(
         target.kind,
-        TargetKind::RustExecutable | TargetKind::RustLibrary
+        TargetKind::RustExecutable | TargetKind::RustLibrary | TargetKind::DExecutable
     ) {
-        let rustc = crate::toolchain::detect_rust()?;
+        let compiler = if target.kind == TargetKind::DExecutable {
+            crate::toolchain::detect_rider(crate::rider::RiderKind::D)?
+        } else {
+            crate::toolchain::detect_rust()?
+        };
         let source = target
             .sources
             .first()
             .ok_or_else(|| Error::Config("Rust target has no source".to_string()))?;
         let output = artifact_path(&output_dir, target);
-        let mut command = Command::new(rustc);
-        command
-            .arg(source)
-            .arg("-o")
-            .arg(&output)
-            .args(&target.flags);
+        let mut command = Command::new(compiler);
+        if target.kind == TargetKind::DExecutable {
+            command.arg("-J").arg(&state.root);
+        }
+        if target.kind == TargetKind::DExecutable {
+            command.args(&target.sources);
+        } else {
+            command.arg(source);
+        }
+        if target.kind == TargetKind::DExecutable {
+            command.arg("-of").arg(&output);
+        } else {
+            command.arg("-o").arg(&output);
+        }
+        command.args(&target.flags);
         if target.kind == TargetKind::RustLibrary {
             command.args(["--crate-type", "lib"]);
+        }
+        if target.kind == TargetKind::DExecutable {
+            command.args(target.linker_flags.iter().map(|flag| {
+                flag.strip_prefix("-l")
+                    .map(|library| format!("-L-l{library}"))
+                    .unwrap_or_else(|| flag.clone())
+            }));
         }
         run(command)?;
         println!("built {}", output.display());
@@ -135,7 +155,9 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             command.arg("-o").arg(&output);
             run(command)?;
         }
-        TargetKind::RustExecutable | TargetKind::RustLibrary => unreachable!(),
+        TargetKind::RustExecutable | TargetKind::RustLibrary | TargetKind::DExecutable => {
+            unreachable!()
+        }
     }
     println!("built {}", output.display());
     Ok(())
