@@ -1,0 +1,9 @@
+project "nox" {
+    version = "0.1.0"
+
+    rust_executable "nox" {
+        sources = ["src/main.rs"]
+        flags = []
+        install = true
+    }
+}

@@ -1,0 +1,11 @@
+task "test" {
+    run = "cargo test"
+}
+
+task "format" {
+    run = "cargo fmt --all"
+}
+
+task "check" {
+    run = "cargo check"
+}
