@@ -44,6 +44,7 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [
+            self.packages.${pkgs.system}.nox
             pkgs.rustc
             pkgs.cargo
             pkgs.rustfmt
