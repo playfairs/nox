@@ -3,7 +3,7 @@
 }:
 pkgs.rustPlatform.buildRustPackage {
   pname = "nox";
-  version = "0.1.0";
+  version = pkgs.lib.strings.trim (builtins.readFile ../VERSION);
   src = ../.;
   cargoLock.lockFile = ../Cargo.lock;
   meta.mainProgram = "nox";

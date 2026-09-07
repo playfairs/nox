@@ -1,9 +1,9 @@
 [package]
 name = "nox"
-version = "0.1.0"
-edition = "2021"
+version = "0.1.1"
+edition = "2024"
 description = "The Nox Build System"
-license = "MIT"
+license = "Unlicense"
 
 [profile.release]
 lto = true
