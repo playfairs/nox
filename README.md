@@ -1,8 +1,14 @@
-# The Nox Build System
+# nox
+The Nox Build System.
 
-Nox is a cross-platform build system and task runner written in Rust. Its core models projects, targets, dependencies, toolchains, and structured build actions independently of any one language.
+---
+
+Nox is a cross-platform build system and task runner written in Rust. Its core models projects, targets, dependencies, toolchains, Riders, and structured build actions independently of any one language.
+
+See the [complete documentation](docs/README.md) for project integration, command behavior, the `nox.build` language, architecture, and troubleshooting.
 
 ## Build Nox
+(haha get it, build nox? because its a build system?? no? ok.)
 
 ```sh
 cargo build --release
@@ -32,7 +38,26 @@ nox setup build
 nox build build -j8
 ```
 
-The default configuration is `debug`; pass `--release` during setup for release artifacts. Commands include `clean`, `rebuild`, `install`, `test`, `run`, `graph`, `targets`, and `task NAME`.
+Install the configured project into `/usr/local`, placing executables in `/usr/local/bin`:
+
+```sh
+nox install
+```
+
+Use `--prefix` for a different installation root. `nox install` configures and builds automatically when the build directory does not exist:
+
+```sh
+nox install --prefix "$HOME/.local"
+```
+
+To install Nox itself from a source checkout, bootstrap the executable once with Cargo, then let Nox handle the rest:
+
+```sh
+cargo run -- install
+/usr/local/bin/nox
+```
+
+The default configuration is `debug`; pass `--release` during setup for release artifacts. Commands include `setup`, `configure`, `build`, `clean`, `rebuild`, `install`, `uninstall`, `validate`, `status`/`stat`, `test`, `run`, `graph`, `targets`, `list`, `version`, and `task NAME`. Every command supports `--help`.
 
 `noxfile` is optional and contains task automation. It is separate from `nox.build`, which describes the actual compilation graph.
 
