@@ -1,5 +1,9 @@
 project "nox" {
-    version = "0.1.0"
+    version = file("./VERSION")
+    description = "The Nox Build System."
+    license = "Unlicense"
+    edition = "1"
+    dependencies = []
 
     rust_executable "nox" {
         sources = ["src/main.rs"]
