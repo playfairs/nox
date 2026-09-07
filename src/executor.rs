@@ -159,6 +159,18 @@ fn build_external_target(
                 .args(&target.sources);
             run(command)?;
         }
+        crate::rider::RiderKind::D => {
+            let mut command = Command::new(&tool);
+            if tool.ends_with("gdc") {
+                command.args(&target.sources).arg("-o").arg(&output);
+            } else {
+                command
+                    .args(&target.sources)
+                    .arg(format!("-of={}", output.display()));
+            }
+            command.args(&target.flags);
+            run(command)?;
+        }
         crate::rider::RiderKind::Java => {
             let classes = output_dir.join("classes");
             fs::create_dir_all(&classes)?;

@@ -5,6 +5,7 @@ pub enum RiderKind {
     C,
     Cpp,
     Rust,
+    D,
     Go,
     Java,
     CSharp,
@@ -43,6 +44,12 @@ pub fn available() -> &'static [Rider] {
             kind: RiderKind::Rust,
             description: "Builds basic Rust executables and libraries through rustc.",
             extensions: &["rs"],
+        },
+        Rider {
+            name: "D Rider",
+            kind: RiderKind::D,
+            description: "Builds D executables through ldc2, dmd, or gdc.",
+            extensions: &["d"],
         },
         Rider {
             name: "Go Rider",

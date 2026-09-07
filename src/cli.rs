@@ -151,8 +151,7 @@ pub fn run() -> Result<()> {
             let project = parser::parse_file(&root.join("nox.build"))?;
             executor::build(&project, &state, jobs)?;
             let target = positional
-                .get(1)
-                .or_else(|| positional.first())
+                .first()
                 .ok_or_else(|| Error::Config("run requires a target".to_string()))?;
             let target_model = project
                 .target(target)
@@ -190,6 +189,7 @@ pub fn run() -> Result<()> {
                 }
                 _ => std::process::Command::new(&path),
             };
+            command.args(positional.iter().skip(1));
             command.status()?;
             Ok(())
         }

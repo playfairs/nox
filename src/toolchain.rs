@@ -29,6 +29,7 @@ pub fn detect_rust() -> Result<String> {
 
 pub fn detect_rider(kind: RiderKind) -> Result<String> {
     let candidates: &[&str] = match kind {
+        RiderKind::D => &["ldc2", "dmd", "gdc"],
         RiderKind::Go => &["go"],
         RiderKind::Java => &["javac"],
         RiderKind::CSharp => &["csc", "mcs"],

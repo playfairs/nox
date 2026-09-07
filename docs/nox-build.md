@@ -142,7 +142,7 @@ executable "tool" {
 }
 ```
 
-The same form works for Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin sources. Each Rider invokes its own detected toolchain and chooses its own artifact format. Python and JavaScript targets are checked and packaged; TypeScript is transpiled to JavaScript; Java and Kotlin produce JAR files.
+The same form works for D, Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin sources. Each Rider invokes its own detected toolchain and chooses its own artifact format. D, Swift, and Zig produce native executables; Python and JavaScript targets are checked and packaged; TypeScript is transpiled to JavaScript; Java and Kotlin produce JAR files. The D Rider looks for `ldc2`, `dmd`, or `gdc`.
 
 ### Rust executable
 

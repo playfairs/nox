@@ -74,3 +74,13 @@ nix develop
 nix fmt
 nix flake check
 ```
+
+Other flakes can consume the repository package:
+
+```nix
+inputs.nox.url = "github:playfairs/nox";
+
+packages = [ inputs.nox.packages.${system}.default ];
+```
+
+The same package is available as `inputs.nox.packages.${system}.nox`, and the executable can be run with `nix run github:playfairs/nox`.

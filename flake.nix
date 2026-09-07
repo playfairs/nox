@@ -22,7 +22,15 @@
     in
     {
       packages = forAllSystems (pkgs: {
+        nox = pkgs.callPackage ./nix/buildPackage.nix { };
         default = pkgs.callPackage ./nix/buildPackage.nix { };
+      });
+
+      apps = forAllSystems (pkgs: {
+        default = {
+          type = "app";
+          program = "${self.packages.${pkgs.system}.default}/bin/nox";
+        };
       });
 
       formatter = forAllSystems (
