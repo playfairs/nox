@@ -1,11 +1,5 @@
-task "test" {
-    run = "cargo test"
-}
-
-task "format" {
-    run = "cargo fmt --all"
-}
-
-task "check" {
-    run = "cargo check"
-}
+tasks:
+    format:
+        run: cargo fmt --all
+    check:
+        run: cargo check
