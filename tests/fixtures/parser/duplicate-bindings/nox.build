@@ -1,0 +1,8 @@
+project "example" {
+    let flags = ["-Wall"]
+    let flags = ["-Wextra"]
+
+    executable "app" {
+        sources = ["main.c"]
+    }
+}

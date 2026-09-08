@@ -1,15 +1,7 @@
-mod build_system;
-mod cli;
-mod core;
-mod project;
-mod run;
-mod task;
-mod toolchain;
-
-use core::{error::Error, output};
+use nox::core::{error::Error, output};
 
 fn main() {
-    match cli::run() {
+    match nox::cli::run() {
         Ok(()) => {}
         Err(Error::Exit(code)) => std::process::exit(code),
         Err(error) => {
@@ -17,8 +9,4 @@ fn main() {
             std::process::exit(1);
         }
     }
-}
-
-pub(crate) fn project_root() -> core::error::Result<std::path::PathBuf> {
-    Ok(std::env::current_dir()?)
 }

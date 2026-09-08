@@ -160,6 +160,10 @@ impl FileRunner {
     }
 }
 
+pub fn handler_language(source: &Path) -> Result<String> {
+    Ok(HandlerRegistry::resolve(source)?.language)
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 enum HandlerMode {
@@ -274,13 +278,13 @@ impl CompileAndRunHandler {
     }
 }
 
-struct TemporaryArtifact {
+pub struct TemporaryArtifact {
     directory: PathBuf,
     executable: PathBuf,
 }
 
 impl TemporaryArtifact {
-    fn new(source: &Path) -> Result<Self> {
+    pub fn new(source: &Path) -> Result<Self> {
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|error| {
@@ -306,7 +310,7 @@ impl TemporaryArtifact {
         })
     }
 
-    fn path(&self) -> &Path {
+    pub fn path(&self) -> &Path {
         &self.executable
     }
 }
@@ -338,50 +342,4 @@ fn required_runtime(source: &Path, programs: &[String], dependency: &str) -> Res
 
 fn exit_code(status: ExitStatus) -> i32 {
     status.code().unwrap_or(1)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{HandlerRegistry, TemporaryArtifact};
-    use std::path::Path;
-
-    #[test]
-    fn resolves_supported_file_handlers() {
-        assert!(matches!(
-            HandlerRegistry::resolve(Path::new("Test.fsx")),
-            Ok(handler) if handler.language == "F#"
-        ));
-        assert!(matches!(
-            HandlerRegistry::resolve(Path::new("Test.c")),
-            Ok(handler) if handler.language == "C"
-        ));
-        assert!(matches!(
-            HandlerRegistry::resolve(Path::new("Test.cpp")),
-            Ok(handler) if handler.language == "C++"
-        ));
-        assert!(matches!(
-            HandlerRegistry::resolve(Path::new("Test.d")),
-            Ok(handler) if handler.language == "D"
-        ));
-        assert!(matches!(
-            HandlerRegistry::resolve(Path::new("Test.rb")),
-            Ok(handler) if handler.language == "Ruby"
-        ));
-    }
-
-    #[test]
-    fn rejects_unknown_file_handlers() {
-        assert!(HandlerRegistry::resolve(Path::new("Test.unknown")).is_err());
-    }
-
-    #[test]
-    fn temporary_artifacts_live_outside_the_source_tree_and_clean_up() {
-        let artifact =
-            TemporaryArtifact::new(Path::new("examples/c/Test.c")).expect("temp artifact");
-        let directory = artifact.directory.clone();
-        assert!(!artifact.path().starts_with(Path::new("examples")));
-        assert!(directory.exists());
-        drop(artifact);
-        assert!(!directory.exists());
-    }
 }

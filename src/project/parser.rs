@@ -1,5 +1,6 @@
 use crate::core::error::{Error, Result};
 use crate::core::model::{Project, Target, TargetKind};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -8,6 +9,14 @@ enum Token {
     Word(String),
     String(String),
     Symbol(char),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Value {
+    String(String),
+    Bool(bool),
+    List(Vec<Value>),
+    Reference(String),
 }
 
 pub fn parse_file(path: &Path) -> Result<Project> {
@@ -21,6 +30,7 @@ pub fn parse(text: &str, root: &Path) -> Result<Project> {
         tokens,
         position: 0,
         root,
+        bindings: HashMap::new(),
     };
     parser.project()
 }
@@ -105,6 +115,7 @@ struct Parser<'a> {
     tokens: Vec<Token>,
     position: usize,
     root: &'a Path,
+    bindings: HashMap<String, Value>,
 }
 
 impl<'a> Parser<'a> {
@@ -120,6 +131,7 @@ impl<'a> Parser<'a> {
         let mut targets = Vec::new();
         while !self.take_symbol('}') {
             match self.word()?.as_str() {
+                "let" => self.binding()?,
                 "version" => {
                     self.expect_symbol('=')?;
                     version = self.string_or_file()?;
@@ -228,6 +240,12 @@ impl<'a> Parser<'a> {
     }
 
     fn strings(&mut self) -> Result<Vec<String>> {
+        if let Some(Token::Word(name)) = self.tokens.get(self.position) {
+            if self.bindings.contains_key(name) {
+                self.position += 1;
+                return self.value_as_strings(name);
+            }
+        }
         self.expect_symbol('[')?;
         let mut values = Vec::new();
         while !self.take_symbol(']') {
@@ -238,7 +256,11 @@ impl<'a> Parser<'a> {
     }
 
     fn boolean(&mut self) -> Result<bool> {
-        match self.word()?.as_str() {
+        let value = self.word()?;
+        if self.bindings.contains_key(&value) {
+            return self.value_as_bool(&value);
+        }
+        match value.as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
             value => Err(Error::Parse(format!("expected boolean, got '{value}'"))),
@@ -247,8 +269,112 @@ impl<'a> Parser<'a> {
 
     fn string_or_word(&mut self) -> Result<String> {
         match self.next() {
-            Some(Token::String(value) | Token::Word(value)) => Ok(value),
+            Some(Token::String(value)) => Ok(value),
+            Some(Token::Word(value)) => {
+                if self.bindings.contains_key(&value) {
+                    self.value_as_string(&value)
+                } else {
+                    Ok(value)
+                }
+            }
             _ => Err(Error::Parse("expected a string or identifier".to_string())),
+        }
+    }
+
+    fn binding(&mut self) -> Result<()> {
+        let name = self.word()?;
+        if self.bindings.contains_key(&name) {
+            return Err(Error::Config(format!(
+                "binding '{name}' is declared more than once"
+            )));
+        }
+        self.expect_symbol('=')?;
+        let value = self.value()?;
+        self.bindings.insert(name, value);
+        Ok(())
+    }
+
+    fn value(&mut self) -> Result<Value> {
+        match self.next() {
+            Some(Token::String(value)) => Ok(Value::String(value)),
+            Some(Token::Word(value)) => {
+                if value == "true" {
+                    Ok(Value::Bool(true))
+                } else if value == "false" {
+                    Ok(Value::Bool(false))
+                } else if self.bindings.contains_key(&value) {
+                    Ok(Value::Reference(value))
+                } else {
+                    Ok(Value::String(value))
+                }
+            }
+            Some(Token::Symbol('[')) => {
+                let mut values = Vec::new();
+                while !self.take_symbol(']') {
+                    values.push(self.value()?);
+                    let _ = self.take_symbol(',');
+                }
+                Ok(Value::List(values))
+            }
+            _ => Err(Error::Parse("expected a binding value".to_string())),
+        }
+    }
+
+    fn resolve(&self, value: &Value) -> Result<Value> {
+        match value {
+            Value::Reference(name) => self
+                .bindings
+                .get(name)
+                .ok_or_else(|| Error::Config(format!("binding '{name}' is not defined")))
+                .and_then(|value| self.resolve(value)),
+            Value::List(values) => Ok(Value::List(
+                values
+                    .iter()
+                    .map(|value| self.resolve(value))
+                    .collect::<Result<Vec<_>>>()?,
+            )),
+            value => Ok(value.clone()),
+        }
+    }
+
+    fn value_as_string(&self, name: &str) -> Result<String> {
+        match self.resolve(
+            self.bindings
+                .get(name)
+                .ok_or_else(|| Error::Config(format!("binding '{name}' is not defined")))?,
+        )? {
+            Value::String(value) => Ok(value),
+            _ => Err(Error::Config(format!("binding '{name}' must be a string"))),
+        }
+    }
+
+    fn value_as_bool(&self, name: &str) -> Result<bool> {
+        match self.resolve(
+            self.bindings
+                .get(name)
+                .ok_or_else(|| Error::Config(format!("binding '{name}' is not defined")))?,
+        )? {
+            Value::Bool(value) => Ok(value),
+            _ => Err(Error::Config(format!("binding '{name}' must be a boolean"))),
+        }
+    }
+
+    fn value_as_strings(&self, name: &str) -> Result<Vec<String>> {
+        match self.resolve(
+            self.bindings
+                .get(name)
+                .ok_or_else(|| Error::Config(format!("binding '{name}' is not defined")))?,
+        )? {
+            Value::List(values) => values
+                .into_iter()
+                .map(|value| match value {
+                    Value::String(value) => Ok(value),
+                    _ => Err(Error::Config(format!(
+                        "binding '{name}' must contain only strings"
+                    ))),
+                })
+                .collect(),
+            _ => Err(Error::Config(format!("binding '{name}' must be a list"))),
         }
     }
 
@@ -348,28 +474,4 @@ fn expand_glob(root: &Path, pattern: &str) -> Result<Vec<String>> {
     }
     results.sort();
     Ok(results)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse;
-    use crate::core::model::TargetKind;
-    use std::path::Path;
-
-    #[test]
-    fn parses_cxx_executable_target() {
-        let project = parse(
-            r#"
-                project "example" {
-                    cxx_executable "app" {
-                        sources = ["main.cpp"]
-                    }
-                }
-            "#,
-            Path::new("."),
-        )
-        .expect("cxx_executable should parse");
-
-        assert_eq!(project.targets[0].kind, TargetKind::CppExecutable);
-    }
 }

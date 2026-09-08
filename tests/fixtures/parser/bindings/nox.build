@@ -1,0 +1,13 @@
+project "example" {
+    let source_files = ["main.c"]
+    let include_paths = ["include"]
+    let warning_flags = ["-Wall", "-Wextra"]
+    let should_install = true
+
+    executable "app" {
+        sources = source_files
+        include_dirs = include_paths
+        flags = warning_flags
+        install = should_install
+    }
+}
