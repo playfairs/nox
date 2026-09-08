@@ -111,15 +111,37 @@ sudo nox install --release
 
 Executables go to `bin`; libraries go to `lib`.
 
-## `nox run TARGET`
+## `nox run [PATH|TARGET] [-- ARGS...]`
 
-Build the project and execute the selected target.
+Run either the current project, a named project target, or one source file. Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically.
 
 ```sh
+nox run .
 nox run hello
+nox run examples/fsharp/Test.fsx
+nox run examples/c/Test.c -- hello world
+nox run examples/cpp/Test.cpp -- hello world
+nox run examples/python/arrays.py
+nox run examples/javascript/arrays.js
+nox run examples/ruby/arrays.rb
+nox run examples/d/arrays.d
+nox run examples/python/arguments.py -- red green blue
+nox run examples/python/exit_status.py -- 42
 ```
 
-The current runner uses the target name as the output executable name and is intended for executable targets.
+Every `arguments` example accepts the same forwarded arguments:
+
+```sh
+nox run examples/c/arguments.c -- red green blue
+nox run examples/cpp/arguments.cpp -- red green blue
+nox run examples/python/arguments.py -- red green blue
+nox run examples/javascript/arguments.js -- red green blue
+nox run examples/ruby/arguments.rb -- red green blue
+nox run examples/fsharp/arguments.fsx -- red green blue
+nox run examples/d/arguments.d -- red green blue
+```
+
+The `--` separator tells Nox to stop parsing its own options. Everything after it is passed to the example as normal program arguments. For example, `red` becomes argument 1, `green` becomes argument 2, and `blue` becomes argument 3.
 
 ## `nox targets`
 
