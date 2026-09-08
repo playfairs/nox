@@ -77,6 +77,38 @@ edition = "1"
 
 The value is stored in the project model and is available to Riders when they select language-specific settings. Cargo's Rust edition remains an implementation detail in `Cargo.toml`.
 
+### `let NAME = VALUE`
+
+Project-level immutable bindings provide reusable configuration values. A
+binding must be declared before it is referenced, and duplicate names are
+rejected:
+
+```text
+project "example" {
+    let source_files = ["src/main.c"]
+    let include_paths = ["include", "third_party/include"]
+    let warning_flags = ["-Wall", "-Wextra"]
+    let should_install = true
+
+    executable "app" {
+        sources = source_files
+        include_dirs = include_paths
+        flags = warning_flags
+        install = should_install
+    }
+}
+```
+
+Bindings currently support strings, booleans, and lists of values. References
+can be used in project metadata and target properties wherever the referenced
+type is accepted, including `sources`, `dependencies`, `include_dirs`,
+`defines`, `flags`, `linker_flags`, and `install`. Paths in a binding remain
+relative to the directory containing `nox.build`.
+
+Bindings are currently project-scoped and immutable. Target-local bindings,
+environment-variable access, command-line overrides, string interpolation, and
+arithmetic expressions are not implemented yet.
+
 ### `dependencies = [DEPENDENCIES]`
 
 Optional project-level dependency names:

@@ -30,24 +30,24 @@ Additions
 		* Review temporary compilation behavior for platform-specific compiler
 		  flags, linker dependencies, source-relative includes, and parallel runs.
 
-* Add variables and let-bindings to `nox.build`
-	* Add a declaration form for reusable project configuration values, for example:
+* Extend the partially implemented variables and let-bindings feature
+	* Implemented: project-level immutable `let NAME = VALUE` declarations for
+	  strings, booleans, and lists.
+	* Implemented: references from project metadata and target properties including
+	  sources, dependencies, include directories, defines, compiler/linker flags,
+	  and install settings.
+	* Implemented: duplicate-binding diagnostics and type checks when a binding is
+	  used as a scalar, boolean, or list.
 
-	  `let warning_flags = ["-Wall", "-Wextra"]`
-
-	* Support references to bindings anywhere a project or target currently accepts
-	  literal strings, paths, booleans, or lists, including target flags, include
-	  directories, linker flags, source globs, and output/install settings where
-	  appropriate.
-	* Define lexical scope and shadowing rules clearly. Project-level bindings should
-	  be visible to targets, while target-level bindings should not leak to siblings.
-	* Decide whether bindings are immutable values only or can also read environment
-		variables and command-line overrides. Environment access must be explicit so
-		builds remain understandable and reproducible.
-	* Reject undefined names, duplicate bindings, cyclic references, and incompatible
-	  value types with source-aware diagnostics.
-	* Add parser and evaluation tests covering strings, lists, paths, booleans, scope,
-	  interpolation, errors, and repeated use of the same binding.
+	* Add target-local bindings and define whether shadowing is allowed. Project
+	  bindings should remain visible to targets, while target bindings must not leak
+	  to sibling targets.
+	* Add explicit environment-variable access and command-line overrides only if
+	  their precedence and reproducibility guarantees are documented.
+	* Add string interpolation, forward references, cycle detection, and
+	  source-aware diagnostics if the language needs those capabilities.
+	* Expand parser tests for metadata references, glob arguments, nested lists,
+	  invalid types, undefined names, and binding scope.
 
 * Add a bounded expression language for computed configuration
 	* Support numeric literals and arithmetic operators (`+`, `-`, `*`, `/`, `%`) with
