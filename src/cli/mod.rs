@@ -269,7 +269,7 @@ fn bump_version(
         }
     };
 
-    let mut updated_files = 0;
+    let mut updated_files = Vec::new();
     match specified_files {
         Some(paths) => {
             update_version_file(&version_path, &current, &next, &mut updated_files)?;
@@ -281,8 +281,12 @@ fn bump_version(
     }
     output::action(
         "bumped version",
-        format!("{current} -> {next} ({updated_files} files)"),
+        format!("{current} -> {next} ({} files)", updated_files.len()),
     );
+    for path in &updated_files {
+        let display = path.strip_prefix(root).unwrap_or(path);
+        output::path_value("updated", display.display());
+    }
     Ok(())
 }
 
@@ -317,7 +321,7 @@ fn update_version_references(
     directory: &Path,
     current: &str,
     next: &str,
-    updated_files: &mut usize,
+    updated_files: &mut Vec<PathBuf>,
 ) -> Result<()> {
     for entry in fs::read_dir(directory)? {
         let path = entry?.path();
@@ -340,7 +344,7 @@ fn update_version_file(
     path: &Path,
     current: &str,
     next: &str,
-    updated_files: &mut usize,
+    updated_files: &mut Vec<PathBuf>,
 ) -> Result<()> {
     let Ok(contents) = fs::read_to_string(path) else {
         return Ok(());
@@ -348,7 +352,7 @@ fn update_version_file(
     let replaced = replace_version_tokens(&contents, current, next);
     if replaced != contents {
         fs::write(path, replaced)?;
-        *updated_files += 1;
+        updated_files.push(path.to_path_buf());
     }
     Ok(())
 }
