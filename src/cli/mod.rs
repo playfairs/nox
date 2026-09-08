@@ -269,7 +269,9 @@ fn configured_build_dir(root: &Path) -> Result<Option<PathBuf>> {
         .ok_or_else(|| Error::Config("invalid nox.config".to_string()))?
         .trim();
     if value.is_empty() {
-        return Err(Error::Config("nox.config has no build directory".to_string()));
+        return Err(Error::Config(
+            "nox.config has no build directory".to_string(),
+        ));
     }
     let build_dir = PathBuf::from(value);
     Ok(Some(if build_dir.is_absolute() {
