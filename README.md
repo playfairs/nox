@@ -85,3 +85,7 @@ packages = [ inputs.nox.packages.${system}.default ];
 ```
 
 The same package is available as `inputs.nox.packages.${system}.nox`, and the executable can be run with `nix run github:playfairs/nox`.
+
+---
+
+See [**nox-vscode**](https://github.com/playfairs/nox-vscode) for LSP support for Visual Studio Code.
