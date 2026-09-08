@@ -30,6 +30,7 @@ pub fn run() -> Result<()> {
         Some(value) => value.to_string(),
     };
     let mut build_dir = PathBuf::from("build");
+    let mut build_dir_explicit = false;
     let mut configuration = "debug".to_string();
     let mut prefix = default_install_prefix();
     let mut help_requested = false;
@@ -67,6 +68,7 @@ pub fn run() -> Result<()> {
             "--debug" => configuration = "debug".to_string(),
             "--reconfigure" => reconfigure = true,
             "-C" | "--build-dir" => {
+                build_dir_explicit = true;
                 build_dir = PathBuf::from(
                     arguments
                         .next()
@@ -93,10 +95,16 @@ pub fn run() -> Result<()> {
     }
     if let Some(value) = positional.first() {
         if matches!(command.as_str(), "setup" | "build" | "compile") {
+            build_dir_explicit = true;
             build_dir = PathBuf::from(value);
         }
     }
     let root = project_root()?;
+    if !build_dir_explicit && !matches!(command.as_str(), "setup" | "configure") {
+        if let Some(configured_build_dir) = configured_build_dir(&root)? {
+            build_dir = configured_build_dir;
+        }
+    }
     let state_dir = if build_dir.is_absolute() {
         build_dir
     } else {
@@ -123,6 +131,9 @@ pub fn run() -> Result<()> {
         "clean" => {
             if state_dir.exists() {
                 fs::remove_dir_all(state_dir)?;
+            }
+            if !build_dir_explicit {
+                remove_project_config(&root)?;
             }
             Ok(())
         }
@@ -238,7 +249,50 @@ fn setup(
         compile_flags,
     };
     state.save()?;
+    write_project_config(root, build_dir)?;
     output::configured(project.name, project.version, build_dir.display());
+    Ok(())
+}
+
+fn project_config_path(root: &Path) -> PathBuf {
+    root.join("nox.config")
+}
+
+fn configured_build_dir(root: &Path) -> Result<Option<PathBuf>> {
+    let path = project_config_path(root);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let text = fs::read_to_string(&path)?;
+    let value = text
+        .strip_prefix("build_dir=")
+        .ok_or_else(|| Error::Config("invalid nox.config".to_string()))?
+        .trim();
+    if value.is_empty() {
+        return Err(Error::Config("nox.config has no build directory".to_string()));
+    }
+    let build_dir = PathBuf::from(value);
+    Ok(Some(if build_dir.is_absolute() {
+        build_dir
+    } else {
+        root.join(build_dir)
+    }))
+}
+
+fn write_project_config(root: &Path, build_dir: &Path) -> Result<()> {
+    let configured_path = build_dir.strip_prefix(root).unwrap_or(build_dir);
+    fs::write(
+        project_config_path(root),
+        format!("build_dir={}\n", configured_path.display()),
+    )?;
+    Ok(())
+}
+
+fn remove_project_config(root: &Path) -> Result<()> {
+    let path = project_config_path(root);
+    if path.exists() {
+        fs::remove_file(path)?;
+    }
     Ok(())
 }
 
