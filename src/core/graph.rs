@@ -1,5 +1,5 @@
-use crate::error::{Error, Result};
-use crate::model::Project;
+use crate::core::error::{Error, Result};
+use crate::core::model::Project;
 use std::collections::{HashMap, HashSet};
 
 pub fn order(project: &Project) -> Result<Vec<String>> {

@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::core::error::{Error, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -9,6 +9,7 @@ pub struct BuildState {
     pub compiler: String,
     pub linker: String,
     pub archiver: String,
+    pub compile_flags: Vec<String>,
 }
 
 impl BuildState {
@@ -19,12 +20,16 @@ impl BuildState {
     pub fn save(&self) -> Result<()> {
         fs::create_dir_all(&self.build_dir)?;
         let content = format!(
-            "root={}\nconfiguration={}\ncompiler={}\nlinker={}\narchiver={}\n",
+            "root={}\nconfiguration={}\ncompiler={}\nlinker={}\narchiver={}\n{}",
             self.root.display(),
             self.configuration,
             self.compiler,
             self.linker,
-            self.archiver
+            self.archiver,
+            self.compile_flags
+                .iter()
+                .map(|flag| format!("compile_flag={flag}\n"))
+                .collect::<String>()
         );
         fs::write(Self::path(&self.build_dir), content)?;
         Ok(())
@@ -39,11 +44,16 @@ impl BuildState {
             ))
         })?;
         let mut values = std::collections::HashMap::new();
+        let mut compile_flags = Vec::new();
         for line in text.lines() {
             let (key, value) = line
                 .split_once('=')
                 .ok_or_else(|| Error::Config("invalid build state".to_string()))?;
-            values.insert(key, value.to_string());
+            if key == "compile_flag" {
+                compile_flags.push(value.to_string());
+            } else {
+                values.insert(key, value.to_string());
+            }
         }
         Ok(Self {
             root: PathBuf::from(
@@ -62,6 +72,7 @@ impl BuildState {
             archiver: values
                 .remove("archiver")
                 .unwrap_or_else(|| "ar".to_string()),
+            compile_flags,
         })
     }
 }

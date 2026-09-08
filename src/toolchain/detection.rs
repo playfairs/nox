@@ -1,5 +1,5 @@
-use crate::error::{Error, Result};
-use crate::rider::RiderKind;
+use crate::core::error::{Error, Result};
+use crate::toolchain::rider::RiderKind;
 use std::process::Command;
 
 pub fn find(programs: &[&str]) -> String {

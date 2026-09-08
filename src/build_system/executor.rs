@@ -1,6 +1,6 @@
-use crate::error::{Error, Result};
-use crate::model::{Project, Target, TargetKind};
-use crate::state::BuildState;
+use crate::build_system::state::BuildState;
+use crate::core::error::{Error, Result};
+use crate::core::model::{Project, Target, TargetKind};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::thread;
 
 pub fn build(project: &Project, state: &BuildState, jobs: usize) -> Result<()> {
-    let order = crate::graph::order(project)?;
+    let order = crate::core::graph::order(project)?;
     let jobs = jobs.max(1);
     for name in order {
         let target = project
@@ -30,9 +30,9 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         TargetKind::RustExecutable | TargetKind::RustLibrary | TargetKind::DExecutable
     ) {
         let compiler = if target.kind == TargetKind::DExecutable {
-            crate::toolchain::detect_rider(crate::rider::RiderKind::D)?
+            crate::toolchain::detection::detect_rider(crate::toolchain::rider::RiderKind::D)?
         } else {
-            crate::toolchain::detect_rust()?
+            crate::toolchain::detection::detect_rust()?
         };
         let source = target
             .sources
@@ -54,6 +54,7 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             command.arg("-o").arg(&output);
         }
         command.args(&target.flags);
+        command.args(&state.compile_flags);
         if target.kind == TargetKind::RustLibrary {
             command.args(["--crate-type", "lib"]);
         }
@@ -65,19 +66,19 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             }));
         }
         run(command)?;
-        println!("built {}", output.display());
+        crate::core::output::action("built", output.display());
         return Ok(());
     }
     if let Some(rider) = target
         .sources
         .first()
-        .and_then(|source| crate::rider::for_source(source))
+        .and_then(|source| crate::toolchain::rider::for_source(source))
     {
         if !matches!(
             rider.kind,
-            crate::rider::RiderKind::C | crate::rider::RiderKind::Cpp
+            crate::toolchain::rider::RiderKind::C | crate::toolchain::rider::RiderKind::Cpp
         ) {
-            return build_external_target(target, &output_dir, rider.kind);
+            return build_external_target(target, state, &output_dir, rider.kind);
         }
     }
     let sources = Arc::new(target.sources.clone());
@@ -159,20 +160,21 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             unreachable!()
         }
     }
-    println!("built {}", output.display());
+    crate::core::output::action("built", output.display());
     Ok(())
 }
 
 fn build_external_target(
     target: &Target,
+    state: &BuildState,
     output_dir: &Path,
-    kind: crate::rider::RiderKind,
+    kind: crate::toolchain::rider::RiderKind,
 ) -> Result<()> {
-    let tool = crate::toolchain::detect_rider(kind)?;
+    let tool = crate::toolchain::detection::detect_rider(kind)?;
     let output = external_artifact_path(output_dir, target, kind);
     fs::create_dir_all(output_dir)?;
     match kind {
-        crate::rider::RiderKind::Go => {
+        crate::toolchain::rider::RiderKind::Go => {
             let mut command = Command::new(tool);
             command
                 .arg("build")
@@ -181,7 +183,7 @@ fn build_external_target(
                 .args(&target.sources);
             run(command)?;
         }
-        crate::rider::RiderKind::D => {
+        crate::toolchain::rider::RiderKind::D => {
             let mut command = Command::new(&tool);
             if tool.ends_with("gdc") {
                 command.args(&target.sources).arg("-o").arg(&output);
@@ -191,9 +193,10 @@ fn build_external_target(
                     .arg(format!("-of={}", output.display()));
             }
             command.args(&target.flags);
+            command.args(&state.compile_flags);
             run(command)?;
         }
-        crate::rider::RiderKind::Java => {
+        crate::toolchain::rider::RiderKind::Java => {
             let classes = output_dir.join("classes");
             fs::create_dir_all(&classes)?;
             let mut compile = Command::new(tool);
@@ -208,7 +211,7 @@ fn build_external_target(
                 .arg(".");
             run(archive)?;
         }
-        crate::rider::RiderKind::CSharp => {
+        crate::toolchain::rider::RiderKind::CSharp => {
             let mut command = Command::new(tool);
             command
                 .arg("-nologo")
@@ -216,12 +219,12 @@ fn build_external_target(
                 .args(&target.sources);
             run(command)?;
         }
-        crate::rider::RiderKind::Swift => {
+        crate::toolchain::rider::RiderKind::Swift => {
             let mut command = Command::new(tool);
             command.args(&target.sources).arg("-o").arg(&output);
             run(command)?;
         }
-        crate::rider::RiderKind::Zig => {
+        crate::toolchain::rider::RiderKind::Zig => {
             let source = target
                 .sources
                 .first()
@@ -233,7 +236,7 @@ fn build_external_target(
                 .arg(format!("-femit-bin={}", output.display()));
             run(command)?;
         }
-        crate::rider::RiderKind::Python => {
+        crate::toolchain::rider::RiderKind::Python => {
             let source = target
                 .sources
                 .first()
@@ -243,7 +246,7 @@ fn build_external_target(
             run(check)?;
             fs::copy(source, &output)?;
         }
-        crate::rider::RiderKind::JavaScript => {
+        crate::toolchain::rider::RiderKind::JavaScript => {
             let source = target
                 .sources
                 .first()
@@ -253,7 +256,7 @@ fn build_external_target(
             run(check)?;
             fs::copy(source, &output)?;
         }
-        crate::rider::RiderKind::TypeScript => {
+        crate::toolchain::rider::RiderKind::TypeScript => {
             let source = target
                 .sources
                 .first()
@@ -282,7 +285,7 @@ fn build_external_target(
                 .with_extension("js");
             fs::copy(javascript, &output)?;
         }
-        crate::rider::RiderKind::Kotlin => {
+        crate::toolchain::rider::RiderKind::Kotlin => {
             let mut command = Command::new(tool);
             command
                 .args(&target.sources)
@@ -290,25 +293,28 @@ fn build_external_target(
                 .arg(&output);
             run(command)?;
         }
-        crate::rider::RiderKind::C
-        | crate::rider::RiderKind::Cpp
-        | crate::rider::RiderKind::Rust => {
+        crate::toolchain::rider::RiderKind::C
+        | crate::toolchain::rider::RiderKind::Cpp
+        | crate::toolchain::rider::RiderKind::Rust => {
             unreachable!()
         }
     }
-    println!("built {}", output.display());
+    crate::core::output::action("built", output.display());
     Ok(())
 }
 
 fn external_artifact_path(
     directory: &Path,
     target: &Target,
-    kind: crate::rider::RiderKind,
+    kind: crate::toolchain::rider::RiderKind,
 ) -> PathBuf {
     let suffix = match kind {
-        crate::rider::RiderKind::Java | crate::rider::RiderKind::Kotlin => ".jar",
-        crate::rider::RiderKind::Python => ".py",
-        crate::rider::RiderKind::JavaScript | crate::rider::RiderKind::TypeScript => ".js",
+        crate::toolchain::rider::RiderKind::Java | crate::toolchain::rider::RiderKind::Kotlin => {
+            ".jar"
+        }
+        crate::toolchain::rider::RiderKind::Python => ".py",
+        crate::toolchain::rider::RiderKind::JavaScript
+        | crate::toolchain::rider::RiderKind::TypeScript => ".js",
         _ => "",
     };
     directory.join(format!("{}{suffix}", target.name))
@@ -328,10 +334,10 @@ fn compile(
     let depfile = output_dir.join(format!("{stem}.d"));
     if object_needs_build(&object, source, &depfile) {
         let compiler = if target.kind == TargetKind::CppExecutable
-            || crate::rider::for_source(source)
-                .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
+            || crate::toolchain::rider::for_source(source)
+                .is_some_and(|rider| rider.kind == crate::toolchain::rider::RiderKind::Cpp)
         {
-            crate::toolchain::detect_cpp()
+            crate::toolchain::detection::detect_cpp()
         } else {
             state.compiler.clone()
         };
@@ -351,6 +357,7 @@ fn compile(
         }
         command
             .args(&target.flags)
+            .args(&state.compile_flags)
             .args(target.defines.iter().map(|define| format!("-D{define}")))
             .args(
                 target
@@ -359,7 +366,7 @@ fn compile(
                     .map(|directory| format!("-I{}", directory.display())),
             );
         run(command)?;
-        println!("compiled {}", source.display());
+        crate::core::output::action("compiled", source.display());
     }
     Ok(object)
 }
@@ -381,7 +388,7 @@ pub fn target_artifact_path(directory: &Path, target: &Target) -> PathBuf {
     target
         .sources
         .first()
-        .and_then(|source| crate::rider::for_source(source.as_path()))
+        .and_then(|source| crate::toolchain::rider::for_source(source.as_path()))
         .map(|rider| external_artifact_path(directory, target, rider.kind))
         .unwrap_or_else(|| artifact_path(directory, target))
 }
@@ -389,11 +396,11 @@ pub fn target_artifact_path(directory: &Path, target: &Target) -> PathBuf {
 fn linker_for_target(target: &Target, c_linker: &str) -> String {
     if target.kind == TargetKind::CppExecutable
         || target.sources.iter().any(|source| {
-            crate::rider::for_source(source)
-                .is_some_and(|rider| rider.kind == crate::rider::RiderKind::Cpp)
+            crate::toolchain::rider::for_source(source)
+                .is_some_and(|rider| rider.kind == crate::toolchain::rider::RiderKind::Cpp)
         })
     {
-        crate::toolchain::detect_cpp()
+        crate::toolchain::detection::detect_cpp()
     } else {
         c_linker.to_string()
     }
@@ -449,6 +456,7 @@ impl Clone for BuildState {
             compiler: self.compiler.clone(),
             linker: self.linker.clone(),
             archiver: self.archiver.clone(),
+            compile_flags: self.compile_flags.clone(),
         }
     }
 }

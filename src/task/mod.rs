@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::core::error::{Error, Result};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -16,6 +16,7 @@ pub fn run_task(path: &Path, name: &str) -> Result<()> {
         Command::new("sh").args(["-c", &command]).status()?
     };
     if status.success() {
+        crate::core::output::success(format!("task '{name}' completed"));
         Ok(())
     } else {
         Err(Error::Process(format!(
@@ -67,14 +68,14 @@ fn legacy_task_command(text: &str, name: &str) -> Option<String> {
     block
         .split("run = \"")
         .nth(1)
-        .and_then(|value| value.split('"').next())
+        .and_then(|value| value.split('\"').next())
         .map(str::to_string)
 }
 
 fn unquote(value: &str) -> String {
     value
-        .strip_prefix('"')
-        .and_then(|value| value.strip_suffix('"'))
+        .strip_prefix('\"')
+        .and_then(|value| value.strip_suffix('\"'))
         .or_else(|| {
             value
                 .strip_prefix('\'')

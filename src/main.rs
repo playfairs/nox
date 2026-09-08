@@ -1,19 +1,15 @@
+mod build_system;
 mod cli;
-mod error;
-mod executor;
-mod graph;
-mod model;
-mod parser;
-mod rider;
-mod state;
+mod core;
+mod project;
 mod task;
 mod toolchain;
 
-use error::Result;
+use core::{error::Result, output};
 
 fn main() {
     if let Err(error) = cli::run() {
-        eprintln!("nox: {error}");
+        output::error(format!("nox: {error}"));
         std::process::exit(1);
     }
 }

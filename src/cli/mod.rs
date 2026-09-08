@@ -1,24 +1,27 @@
-use crate::error::{Error, Result};
-use crate::executor;
-use crate::graph;
-use crate::model::TargetKind;
-use crate::parser;
+use crate::build_system::executor;
+use crate::build_system::state::BuildState;
+use crate::core::error::{Error, Result};
+use crate::core::graph;
+use crate::core::model::{Target, TargetKind};
+use crate::core::output;
+use crate::project::parser;
 use crate::project_root;
-use crate::state::BuildState;
 use crate::task;
-use crate::toolchain;
+use crate::toolchain::{detection, rider};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod help;
+
 fn version() -> &'static str {
-    include_str!("../VERSION").trim()
+    include_str!("../../VERSION").trim()
 }
 
 pub fn run() -> Result<()> {
     let mut arguments = std::env::args().skip(1);
     let first = arguments.next();
     if matches!(first.as_deref(), Some("--version" | "-V" | "-v")) {
-        println!("nox {}", version());
+        output::version("nox", version());
         return Ok(());
     }
     let command = match first.as_deref() {
@@ -29,6 +32,8 @@ pub fn run() -> Result<()> {
     let mut configuration = "debug".to_string();
     let mut prefix = default_install_prefix();
     let mut help_requested = false;
+    let mut reconfigure = false;
+    let mut compile_flags = Vec::new();
     let mut jobs = std::thread::available_parallelism()
         .map(|value| value.get())
         .unwrap_or(1);
@@ -37,7 +42,7 @@ pub fn run() -> Result<()> {
         match argument.as_str() {
             "--help" | "-h" => help_requested = true,
             "--version" | "-V" | "-v" => {
-                println!("nox {}", version());
+                output::version("nox", version());
                 return Ok(());
             }
             "-j" => {
@@ -54,13 +59,19 @@ pub fn run() -> Result<()> {
             }
             "--release" => configuration = "release".to_string(),
             "--debug" => configuration = "debug".to_string(),
-            "--build-dir" => {
+            "--reconfigure" => reconfigure = true,
+            "-C" | "--build-dir" => {
                 build_dir = PathBuf::from(
                     arguments
                         .next()
                         .ok_or_else(|| Error::Config("--build-dir requires a path".to_string()))?,
                 )
             }
+            "--compile-flag" => compile_flags.push(
+                arguments
+                    .next()
+                    .ok_or_else(|| Error::Config("--compile-flag requires a value".to_string()))?,
+            ),
             "--prefix" => {
                 prefix = PathBuf::from(
                     arguments
@@ -75,7 +86,7 @@ pub fn run() -> Result<()> {
         }
     }
     if let Some(value) = positional.first() {
-        if command == "setup" || command == "build" {
+        if matches!(command.as_str(), "setup" | "build" | "compile") {
             build_dir = PathBuf::from(value);
         }
     }
@@ -86,13 +97,19 @@ pub fn run() -> Result<()> {
         root.join(build_dir)
     };
     if help_requested {
-        print_command_help(&command);
+        help::print(&command);
         return Ok(());
     }
     match command.as_str() {
-        "setup" | "configure" => setup(&root, &state_dir, &configuration),
-        "build" => {
-            let state = BuildState::load(&state_dir)?;
+        "setup" | "configure" => {
+            if reconfigure && state_dir.exists() {
+                fs::remove_dir_all(&state_dir)?;
+            }
+            setup(&root, &state_dir, &configuration, compile_flags)
+        }
+        "build" | "compile" => {
+            let mut state = BuildState::load(&state_dir)?;
+            state.compile_flags.extend(compile_flags);
             let project = parser::parse_file(&state.root.join("nox.build"))?;
             graph::validate(&project)?;
             executor::build(&project, &state, jobs)
@@ -107,7 +124,7 @@ pub fn run() -> Result<()> {
             if state_dir.exists() {
                 fs::remove_dir_all(&state_dir)?;
             }
-            setup(&root, &state_dir, &configuration)?;
+            setup(&root, &state_dir, &configuration, compile_flags)?;
             let state = BuildState::load(&state_dir)?;
             let project = parser::parse_file(&root.join("nox.build"))?;
             executor::build(&project, &state, jobs)
@@ -115,34 +132,34 @@ pub fn run() -> Result<()> {
         "targets" => {
             let project = parser::parse_file(&root.join("nox.build"))?;
             for target in project.targets {
-                println!("{}", target.name);
+                output::item(&target.name);
             }
             Ok(())
         }
         "list" => {
             let project = parser::parse_file(&root.join("nox.build"))?;
             for target in project.targets {
-                println!("{}", target.name);
+                output::item(&target.name);
             }
             Ok(())
         }
         "validate" => {
             let project = parser::parse_file(&root.join("nox.build"))?;
             graph::validate(&project)?;
-            println!("validated {}", project.name);
+            output::action("validated", project.name);
             Ok(())
         }
         "status" | "stat" => status(&state_dir),
         "riders" => {
-            for rider in crate::rider::available() {
-                println!("{}: {}", rider.name, rider.description);
+            for rider in rider::available() {
+                output::list_item(rider.name, rider.description);
             }
             Ok(())
         }
         "graph" => {
             let project = parser::parse_file(&root.join("nox.build"))?;
             for name in graph::order(&project)? {
-                println!("{name}");
+                output::item(name);
             }
             Ok(())
         }
@@ -163,21 +180,21 @@ pub fn run() -> Result<()> {
             let rider = target_model
                 .sources
                 .first()
-                .and_then(|source| crate::rider::for_source(source.as_path()))
+                .and_then(|source| rider::for_source(source.as_path()))
                 .ok_or_else(|| Error::Config(format!("no Rider recognizes target '{target}'")))?;
             let mut command = match rider.kind {
-                crate::rider::RiderKind::Java | crate::rider::RiderKind::Kotlin => {
+                rider::RiderKind::Java | rider::RiderKind::Kotlin => {
                     let mut command = std::process::Command::new("java");
                     command.args(["-jar"]).arg(&path);
                     command
                 }
-                crate::rider::RiderKind::Python => {
+                rider::RiderKind::Python => {
                     let mut command =
-                        std::process::Command::new(crate::toolchain::detect_rider(rider.kind)?);
+                        std::process::Command::new(detection::detect_rider(rider.kind)?);
                     command.arg(&path);
                     command
                 }
-                crate::rider::RiderKind::JavaScript | crate::rider::RiderKind::TypeScript => {
+                rider::RiderKind::JavaScript | rider::RiderKind::TypeScript => {
                     let mut command = std::process::Command::new("node");
                     command.arg(&path);
                     command
@@ -217,63 +234,26 @@ pub fn run() -> Result<()> {
                 .ok_or_else(|| Error::Config("task requires a name".to_string()))?,
         ),
         "help" => {
-            print_command_help(positional.first().map(String::as_str).unwrap_or(""));
+            help::print(positional.first().map(String::as_str).unwrap_or(""));
             Ok(())
         }
         "version" => {
-            println!("nox {}", version());
+            output::version("nox", version());
             Ok(())
         }
         value => Err(Error::Config(format!("unknown command '{value}'"))),
     }
 }
 
-fn print_command_help(command: &str) {
-    let text = match command {
-        "" => {
-            "The Nox Build System\n\nUsage: nox <COMMAND> [OPTIONS]\n\nCommands:\n  setup, configure  Configure a build directory\n  build             Build configured targets\n  rebuild           Clean, configure, and build\n  clean             Remove build artifacts\n  install           Build and install targets\n  uninstall         Remove installed targets\n  validate          Validate nox.build\n  status            Show configuration status\n  riders            List language and toolchain Riders\n  targets, list     List targets\n  graph             Show dependency order\n  run               Build and run an executable\n  test              Run the noxfile test task\n  task              Run a noxfile task\n  version           Print the Nox version\n  help              Show command help\n\nOptions:\n  -h, --help       Show help\n  -v, --version    Show version\n\nRun 'nox <COMMAND> --help' for command-specific help."
-        }
-        "setup" | "configure" => {
-            "Usage: nox setup [BUILD_DIR] [--release|--debug]\n\nParse nox.build, validate the graph, detect toolchains, and write build state.\nThe default build directory is build. Alias: configure."
-        }
-        "build" => {
-            "Usage: nox build [BUILD_DIR] [-j N] [--release|--debug]\n\nLoad build state, compile changed sources, and link targets incrementally."
-        }
-        "rebuild" => {
-            "Usage: nox rebuild [--release|--debug]\n\nRemove the build directory, configure it again, and build all targets."
-        }
-        "clean" => {
-            "Usage: nox clean\n\nRemove the configured build directory. Installed files are preserved."
-        }
-        "install" => {
-            "Usage: nox install [--prefix PATH] [--release|--debug]\n\nConfigure if needed, build, and install targets marked install = true.\nExecutables go to <prefix>/bin and libraries to <prefix>/lib."
-        }
-        "uninstall" => {
-            "Usage: nox uninstall [--prefix PATH]\n\nRemove targets marked install = true from the installation prefix."
-        }
-        "validate" => {
-            "Usage: nox validate\n\nParse nox.build and validate target names and dependency cycles without building."
-        }
-        "status" | "stat" => {
-            "Usage: nox status\n\nShow whether the build directory is configured and display its active configuration. Alias: stat."
-        }
-        "riders" => "Usage: nox riders\n\nList the language and toolchain Riders available to Nox.",
-        "targets" | "list" => "Usage: nox targets\n\nList declared targets. Alias: list.",
-        "graph" => "Usage: nox graph\n\nPrint targets in dependency order.",
-        "run" => "Usage: nox run TARGET\n\nBuild the project and run the named executable target.",
-        "test" => "Usage: nox test\n\nRun task \"test\" from noxfile.",
-        "task" => "Usage: nox task NAME\n\nRun a named task from noxfile.",
-        "version" => "Usage: nox version\n\nPrint the Nox version.",
-        "help" => "Usage: nox help [COMMAND]\n\nShow general or command-specific help.",
-        _ => "Unknown command. Run 'nox --help' to list available commands.",
-    };
-    println!("{text}");
-}
-
-fn setup(root: &Path, build_dir: &Path, configuration: &str) -> Result<()> {
+fn setup(
+    root: &Path,
+    build_dir: &Path,
+    configuration: &str,
+    compile_flags: Vec<String>,
+) -> Result<()> {
     let project = parser::parse_file(&root.join("nox.build"))?;
     graph::validate(&project)?;
-    let (compiler, linker, archiver) = toolchain::detect_c();
+    let (compiler, linker, archiver) = detection::detect_c();
     let state = BuildState {
         root: root.to_path_buf(),
         build_dir: build_dir.to_path_buf(),
@@ -281,14 +261,10 @@ fn setup(root: &Path, build_dir: &Path, configuration: &str) -> Result<()> {
         compiler,
         linker,
         archiver,
+        compile_flags,
     };
     state.save()?;
-    println!(
-        "configured {} {} in {}",
-        project.name,
-        project.version,
-        build_dir.display()
-    );
+    output::configured(project.name, project.version, build_dir.display());
     Ok(())
 }
 
@@ -302,7 +278,7 @@ fn install(
     let needs_setup = !BuildState::path(build_dir).exists()
         || BuildState::load(build_dir)?.configuration != configuration;
     if needs_setup {
-        setup(root, build_dir, configuration)?;
+        setup(root, build_dir, configuration, Vec::new())?;
     }
     let state = BuildState::load(build_dir)?;
     let project = parser::parse_file(&root.join("nox.build"))?;
@@ -322,7 +298,7 @@ fn install(
             Error::Config(format!("invalid artifact path for '{}'", target.name))
         })?);
         fs::copy(source, &destination)?;
-        println!("installed {}", destination.display());
+        output::action("installed", destination.display());
     }
     Ok(())
 }
@@ -338,7 +314,7 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
             })?);
         if destination.exists() {
             fs::remove_file(&destination)?;
-            println!("uninstalled {}", destination.display());
+            output::action("uninstalled", destination.display());
         }
     }
     Ok(())
@@ -346,31 +322,32 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
 
 fn status(build_dir: &Path) -> Result<()> {
     if !BuildState::path(build_dir).exists() {
-        println!("not configured: {}", build_dir.display());
+        output::warning(format!("not configured: {}", build_dir.display()));
         return Ok(());
     }
     let state = BuildState::load(build_dir)?;
     let project = parser::parse_file(&state.root.join("nox.build"))?;
-    println!("project: {} {}", project.name, project.version);
+    output::key_value("project", format!("{} {}", project.name, project.version));
     if !project.description.is_empty() {
-        println!("description: {}", project.description);
+        output::key_value("description", &project.description);
     }
     if !project.license.is_empty() {
-        println!("license: {}", project.license);
+        output::key_value("license", &project.license);
     }
-    println!("edition: {}", project.edition);
-    println!("dependencies: {}", project.dependencies.len());
-    println!("root: {}", state.root.display());
-    println!("build directory: {}", state.build_dir.display());
-    println!("configuration: {}", state.configuration);
-    println!("compiler: {}", state.compiler);
-    println!("linker: {}", state.linker);
-    println!("archiver: {}", state.archiver);
-    println!("targets: {}", project.targets.len());
+    output::key_value("edition", &project.edition);
+    output::key_value("dependencies", project.dependencies.len());
+    output::path_value("root", state.root.display());
+    output::path_value("build directory", state.build_dir.display());
+    output::key_value("configuration", &state.configuration);
+    output::key_value("compiler", &state.compiler);
+    output::key_value("linker", &state.linker);
+    output::key_value("archiver", &state.archiver);
+    output::key_value("compile flags", format!("{:?}", state.compile_flags));
+    output::key_value("targets", project.targets.len());
     Ok(())
 }
 
-fn install_directory(prefix: &Path, target: &crate::model::Target) -> PathBuf {
+fn install_directory(prefix: &Path, target: &Target) -> PathBuf {
     match target.kind {
         TargetKind::StaticLibrary | TargetKind::SharedLibrary => prefix.join("lib"),
         _ => prefix.join("bin"),

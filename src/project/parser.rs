@@ -1,5 +1,5 @@
-use crate::error::{Error, Result};
-use crate::model::{Project, Target, TargetKind};
+use crate::core::error::{Error, Result};
+use crate::core::model::{Project, Target, TargetKind};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
         self.expect_word("project")?;
         let name = self.string_or_word()?;
         self.expect_symbol('{')?;
-        let mut version = include_str!("../VERSION").trim().to_string();
+        let mut version = include_str!("../../VERSION").trim().to_string();
         let mut description = String::new();
         let mut license = String::new();
         let mut edition = "1".to_string();
@@ -353,7 +353,7 @@ fn expand_glob(root: &Path, pattern: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::parse;
-    use crate::model::TargetKind;
+    use crate::core::model::TargetKind;
     use std::path::Path;
 
     #[test]
