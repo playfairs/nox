@@ -47,6 +47,19 @@ version = file("./VERSION")
 
 Nox trims surrounding whitespace and rejects missing or empty version files. The expression is resolved relative to the directory containing `nox.build`.
 
+### `version_files = [FILES]`
+
+Optional project-relative files whose version references should be updated by
+`nox bump-version`:
+
+```text
+version_files = ["Cargo.toml", "Cargo.lock"]
+```
+
+When specified, only these files are updated in addition to the required
+`VERSION` file. Without this property, Nox scans the project for matching
+version references.
+
 ### `description = DESCRIPTION`
 
 Optional project description shown by `nox status`:

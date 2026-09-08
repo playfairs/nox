@@ -124,6 +124,7 @@ impl<'a> Parser<'a> {
         let name = self.string_or_word()?;
         self.expect_symbol('{')?;
         let mut version = include_str!("../../VERSION").trim().to_string();
+        let mut version_files = None;
         let mut description = String::new();
         let mut license = String::new();
         let mut edition = "1".to_string();
@@ -135,6 +136,15 @@ impl<'a> Parser<'a> {
                 "version" => {
                     self.expect_symbol('=')?;
                     version = self.string_or_file()?;
+                }
+                "version_files" => {
+                    self.expect_symbol('=')?;
+                    version_files = Some(
+                        self.paths()?
+                            .into_iter()
+                            .map(std::path::PathBuf::from)
+                            .collect(),
+                    );
                 }
                 "description" => {
                     self.expect_symbol('=')?;
@@ -174,6 +184,7 @@ impl<'a> Parser<'a> {
         Ok(Project {
             name,
             version,
+            version_files,
             description,
             license,
             edition,

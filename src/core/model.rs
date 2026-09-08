@@ -28,6 +28,7 @@ pub struct Target {
 pub struct Project {
     pub name: String,
     pub version: String,
+    pub version_files: Option<Vec<PathBuf>>,
     pub description: String,
     pub license: String,
     pub edition: String,

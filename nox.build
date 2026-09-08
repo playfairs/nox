@@ -4,6 +4,7 @@ project "nox" {
     license = "Unlicense"
     edition = "1"
     dependencies = []
+    version_files = ["Cargo.toml", "VERSION"]
 
     rust_executable "nox" {
         sources = ["src/main.rs"]

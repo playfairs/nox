@@ -14,6 +14,21 @@ nox --version
 nox -v
 ```
 
+## `nox bump-version [major|minor|patch|VERSION]`
+
+Bump the project version and update its references. With no argument, the patch
+component is incremented:
+
+```sh
+nox bump-version
+nox bump-version minor
+nox bump-version 2.0.0
+```
+
+The command always requires and updates `VERSION`. Add `version_files = [...]`
+to `nox.build` to restrict the other files it updates. Without that property,
+Nox scans the project files automatically.
+
 ## `nox setup [BUILD_DIR]`
 
 Parse and validate `nox.build`, detect the C toolchain, and write build state.

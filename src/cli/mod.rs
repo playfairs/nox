@@ -226,8 +226,157 @@ pub fn run() -> Result<()> {
             output::version("nox", version());
             Ok(())
         }
+        "bump-version" | "bump" => bump_version(
+            &root,
+            positional.first().map(String::as_str),
+            positional.len(),
+            version_files(&root)?,
+        ),
         value => Err(Error::Config(format!("unknown command '{value}'"))),
     }
+}
+
+fn bump_version(
+    root: &Path,
+    requested: Option<&str>,
+    argument_count: usize,
+    specified_files: Option<Vec<PathBuf>>,
+) -> Result<()> {
+    if argument_count > 1 {
+        return Err(Error::Config(
+            "bump-version accepts at most one version or release type".to_string(),
+        ));
+    }
+
+    let version_path = root.join("VERSION");
+    if !version_path.is_file() {
+        return Err(Error::Config("VERSION file is required".to_string()));
+    }
+    let current = fs::read_to_string(&version_path)?.trim().to_string();
+    let current_parts = parse_version(&current)?;
+    let next = match requested.unwrap_or("patch") {
+        "major" => format!("{}.0.0", current_parts[0] + 1),
+        "minor" => format!("{}.{}.0", current_parts[0], current_parts[1] + 1),
+        "patch" => format!(
+            "{}.{}.{}",
+            current_parts[0],
+            current_parts[1],
+            current_parts[2] + 1
+        ),
+        value => {
+            parse_version(value)?;
+            value.to_string()
+        }
+    };
+
+    let mut updated_files = 0;
+    match specified_files {
+        Some(paths) => {
+            update_version_file(&version_path, &current, &next, &mut updated_files)?;
+            for path in paths {
+                update_version_file(&root.join(path), &current, &next, &mut updated_files)?;
+            }
+        }
+        None => update_version_references(root, &current, &next, &mut updated_files)?,
+    }
+    output::action(
+        "bumped version",
+        format!("{current} -> {next} ({updated_files} files)"),
+    );
+    Ok(())
+}
+
+fn version_files(root: &Path) -> Result<Option<Vec<PathBuf>>> {
+    let path = root.join("nox.build");
+    if !path.is_file() {
+        return Ok(None);
+    }
+    Ok(parser::parse_file(&path)?.version_files)
+}
+
+fn parse_version(value: &str) -> Result<[u64; 3]> {
+    let parts: Vec<_> = value.split('.').collect();
+    if parts.len() != 3 || parts.iter().any(|part| part.is_empty()) {
+        return Err(Error::Config(format!(
+            "version '{value}' must use MAJOR.MINOR.PATCH format"
+        )));
+    }
+    let parsed = parts
+        .iter()
+        .map(|part| part.parse::<u64>())
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(|_| {
+            Error::Config(format!(
+                "version '{value}' must use numeric MAJOR.MINOR.PATCH components"
+            ))
+        })?;
+    Ok([parsed[0], parsed[1], parsed[2]])
+}
+
+fn update_version_references(
+    directory: &Path,
+    current: &str,
+    next: &str,
+    updated_files: &mut usize,
+) -> Result<()> {
+    for entry in fs::read_dir(directory)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            if matches!(
+                path.file_name().and_then(|name| name.to_str()),
+                Some(".git" | "build" | "target")
+            ) {
+                continue;
+            }
+            update_version_references(&path, current, next, updated_files)?;
+            continue;
+        }
+        update_version_file(&path, current, next, updated_files)?;
+    }
+    Ok(())
+}
+
+fn update_version_file(
+    path: &Path,
+    current: &str,
+    next: &str,
+    updated_files: &mut usize,
+) -> Result<()> {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return Ok(());
+    };
+    let replaced = replace_version_tokens(&contents, current, next);
+    if replaced != contents {
+        fs::write(path, replaced)?;
+        *updated_files += 1;
+    }
+    Ok(())
+}
+
+fn replace_version_tokens(contents: &str, current: &str, next: &str) -> String {
+    let mut result = String::with_capacity(contents.len());
+    let mut remaining = contents;
+    while let Some(index) = remaining.find(current) {
+        let (before, after_match) = remaining.split_at(index);
+        let after = &after_match[current.len()..];
+        let before_boundary = before
+            .chars()
+            .next_back()
+            .is_none_or(|character| !character.is_ascii_digit() && character != '.');
+        let after_boundary = after
+            .chars()
+            .next()
+            .is_none_or(|character| !character.is_ascii_digit() && character != '.');
+        result.push_str(before);
+        if before_boundary && after_boundary {
+            result.push_str(next);
+        } else {
+            result.push_str(current);
+        }
+        remaining = after;
+    }
+    result.push_str(remaining);
+    result
 }
 
 fn setup(
@@ -389,5 +538,45 @@ fn default_install_prefix() -> PathBuf {
         PathBuf::from(r"C:\Program Files\Nox")
     } else {
         PathBuf::from("/usr/local")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{bump_version, version_files};
+    use std::fs;
+
+    #[test]
+    fn bumps_version_references_in_project_files() {
+        let root = std::env::temp_dir().join(format!("nox-version-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create test directory");
+        fs::write(root.join("VERSION"), "9.8.7\n").expect("write VERSION");
+        fs::write(root.join("Cargo.toml"), "version = \"9.8.7\"\n").expect("write Cargo.toml");
+        fs::write(root.join("README"), "old 9.8.7 and 19.8.7\n").expect("write README");
+        fs::write(
+            root.join("nox.build"),
+            "project \"fixture\" {\n    version_files = [\"Cargo.toml\"]\n    executable \"fixture\" { sources = [\"main.c\"] }\n}\n",
+        )
+        .expect("write nox.build");
+
+        bump_version(
+            &root,
+            None,
+            0,
+            version_files(&root).expect("read version files"),
+        )
+        .expect("bump version");
+
+        assert_eq!(fs::read_to_string(root.join("VERSION")).unwrap(), "9.8.8\n");
+        assert_eq!(
+            fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            "version = \"9.8.8\"\n"
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("README")).unwrap(),
+            "old 9.8.7 and 19.8.7\n"
+        );
+        fs::remove_dir_all(root).expect("remove test directory");
     }
 }
