@@ -22,6 +22,7 @@ Parse and validate `nox.build`, detect the C toolchain, and write build state.
 nox setup
 nox setup build
 nox setup build --release
+nox setup build --reconfigure
 nox setup build --build-dir build
 ```
 
@@ -31,18 +32,19 @@ Setup does not compile sources.
 
 `nox configure` is an alias for `nox setup`.
 
-## `nox build [BUILD_DIR]`
+## `nox compile [-C BUILD_DIR]`
 
 Load configured state, construct the target order, compile changed sources, and link targets.
 
 ```sh
-nox build
-nox build build
-nox build build -j8
-nox build build --release
+nox compile
+nox compile -C build
+nox compile -C build -j8
+nox compile -C build --release
+nox compile -C build --compile-flag -C --compile-flag opt-level=1
 ```
 
-`-j8` and `-j 8` are both accepted. `--release` selects release configuration only when the build state was configured for release; run setup again when switching configurations.
+`-C PATH` and `--build-dir PATH` select the configured build directory. `-j8` and `-j 8` are both accepted. Repeat `--compile-flag FLAG` to pass additional flags to compiler invocations. `nox build [BUILD_DIR]` remains an alias for this command.
 
 ## `nox rebuild [--release]`
 
@@ -147,9 +149,27 @@ Select release or debug configuration for setup, rebuild, and install. Debug com
 
 Limit concurrent source compilation workers. Linking remains dependency-ordered.
 
-### `--build-dir PATH`
+### `-C PATH` and `--build-dir PATH`
 
-Select the build directory. This is useful when a project maintains multiple build trees.
+Select the build directory for `compile`, `build`, and `status`. This is useful when a project maintains multiple build trees.
+
+### `--reconfigure`
+
+Remove the selected build directory before running setup. This is useful when changing configuration or toolchain settings:
+
+```sh
+nox setup build --reconfigure
+```
+
+### `--compile-flag FLAG`
+
+Add a flag to compiler invocations. Repeat the option for flags that require separate arguments, such as `-C opt-level=1` for Rust:
+
+```sh
+nox setup build --compile-flag -C --compile-flag opt-level=1
+```
+
+Colors are enabled automatically for interactive terminals and disabled for pipes, CI, and environments with `NO_COLOR` set.
 
 ### `--prefix PATH`
 
