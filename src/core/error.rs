@@ -8,6 +8,7 @@ pub enum Error {
     Parse(String),
     Config(String),
     Process(String),
+    Exit(i32),
 }
 
 impl Display for Error {
@@ -17,6 +18,7 @@ impl Display for Error {
             Self::Parse(message) => write!(formatter, "parse error: {message}"),
             Self::Config(message) => write!(formatter, "configuration error: {message}"),
             Self::Process(message) => write!(formatter, "process error: {message}"),
+            Self::Exit(code) => write!(formatter, "process exited with status {code}"),
         }
     }
 }

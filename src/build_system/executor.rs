@@ -39,6 +39,11 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             .first()
             .ok_or_else(|| Error::Config("Rust target has no source".to_string()))?;
         let output = artifact_path(&output_dir, target);
+        if target.kind == TargetKind::RustExecutable && state.root.join("Cargo.toml").is_file() {
+            build_cargo_target(target, state, &output)?;
+            crate::core::output::action("built", output.display());
+            return Ok(());
+        }
         let mut command = Command::new(compiler);
         if target.kind == TargetKind::DExecutable {
             command.arg("-J").arg(&state.root);
@@ -161,6 +166,39 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         }
     }
     crate::core::output::action("built", output.display());
+    Ok(())
+}
+
+fn build_cargo_target(target: &Target, state: &BuildState, output: &Path) -> Result<()> {
+    let target_dir = state
+        .build_dir
+        .join(&state.configuration)
+        .join(&target.name)
+        .join("cargo-target");
+    let mut command = Command::new("cargo");
+    command
+        .args(["build", "--manifest-path"])
+        .arg(state.root.join("Cargo.toml"))
+        .arg("--target-dir")
+        .arg(&target_dir);
+    if state.configuration == "release" {
+        command.arg("--release");
+    }
+    run(command)?;
+    let built = target_dir
+        .join(&state.configuration)
+        .join(if cfg!(windows) {
+            format!("{}.exe", target.name)
+        } else {
+            target.name.clone()
+        });
+    fs::copy(&built, output).map_err(|error| {
+        Error::Process(format!(
+            "Cargo built '{}' but the artifact could not be copied to '{}': {error}",
+            built.display(),
+            output.display()
+        ))
+    })?;
     Ok(())
 }
 

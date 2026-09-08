@@ -10,6 +10,19 @@ pub fn find(programs: &[&str]) -> String {
         .to_string()
 }
 
+pub fn require(programs: &[&str], description: &str) -> Result<String> {
+    programs
+        .iter()
+        .find(|program| {
+            Command::new(program)
+                .arg("--version")
+                .output()
+                .is_ok_and(|output| output.status.success())
+        })
+        .map(|program| (*program).to_string())
+        .ok_or_else(|| Error::Config(format!("{description} was not found")))
+}
+
 pub fn detect_c() -> (String, String, String) {
     let compiler = find(&["cc", "clang", "gcc"]);
     let linker = compiler.clone();

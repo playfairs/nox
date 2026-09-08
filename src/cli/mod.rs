@@ -6,6 +6,7 @@ use crate::core::model::{Target, TargetKind};
 use crate::core::output;
 use crate::project::parser;
 use crate::project_root;
+use crate::run;
 use crate::task;
 use crate::toolchain::{detection, rider};
 use std::fs;
@@ -38,7 +39,12 @@ pub fn run() -> Result<()> {
         .map(|value| value.get())
         .unwrap_or(1);
     let mut positional = Vec::new();
+    let mut run_arguments = Vec::new();
     while let Some(argument) = arguments.next() {
+        if command == "run" && argument == "--" {
+            run_arguments.extend(arguments);
+            break;
+        }
         match argument.as_str() {
             "--help" | "-h" => help_requested = true,
             "--version" | "-V" | "-v" => {
@@ -164,51 +170,19 @@ pub fn run() -> Result<()> {
             Ok(())
         }
         "run" => {
-            let state = BuildState::load(&state_dir)?;
-            let project = parser::parse_file(&root.join("nox.build"))?;
-            executor::build(&project, &state, jobs)?;
-            let target = positional
-                .first()
-                .ok_or_else(|| Error::Config("run requires a target".to_string()))?;
-            let target_model = project
-                .target(target)
-                .ok_or_else(|| Error::Config(format!("unknown target '{target}'")))?;
-            let path = executor::target_artifact_path(
-                &state.build_dir.join(&state.configuration).join(target),
-                target_model,
-            );
-            let rider = target_model
-                .sources
-                .first()
-                .and_then(|source| rider::for_source(source.as_path()))
-                .ok_or_else(|| Error::Config(format!("no Rider recognizes target '{target}'")))?;
-            let mut command = match rider.kind {
-                rider::RiderKind::Java | rider::RiderKind::Kotlin => {
-                    let mut command = std::process::Command::new("java");
-                    command.args(["-jar"]).arg(&path);
-                    command
-                }
-                rider::RiderKind::Python => {
-                    let mut command =
-                        std::process::Command::new(detection::detect_rider(rider.kind)?);
-                    command.arg(&path);
-                    command
-                }
-                rider::RiderKind::JavaScript | rider::RiderKind::TypeScript => {
-                    let mut command = std::process::Command::new("node");
-                    command.arg(&path);
-                    command
-                }
-                _ if cfg!(windows) => {
-                    let mut command = std::process::Command::new("cmd");
-                    command.args(["/C"]).arg(&path);
-                    command
-                }
-                _ => std::process::Command::new(&path),
-            };
-            command.args(positional.iter().skip(1));
-            command.status()?;
-            Ok(())
+            let code = run::execute(
+                positional.first().map(String::as_str),
+                &run_arguments,
+                &root,
+                &state_dir,
+                &configuration,
+                jobs,
+            )?;
+            if code == 0 {
+                Ok(())
+            } else {
+                Err(Error::Exit(code))
+            }
         }
         "test" => task::run_task(&root.join("noxfile"), "test"),
         "install" => {

@@ -1,0 +1,107 @@
+# File execution handlers used by `nox run <file>`.
+# Extensions are kept here so adding a language does not require editing the resolver.
+handlers:
+  - language: F#
+    extensions: [fsx]
+    mode: runtime
+    tools: [dotnet]
+    arguments: [fsi]
+    dependency: ".NET SDK/runtime with F# Interactive (dotnet fsi)"
+
+  - language: Python
+    extensions: [py]
+    mode: runtime
+    tools: [python3, python]
+    arguments: []
+    dependency: Python
+
+  - language: JavaScript
+    extensions: [js, jsx, mjs]
+    mode: runtime
+    tools: [node]
+    arguments: []
+    dependency: Node.js
+
+  - language: Ruby
+    extensions: [rb]
+    mode: runtime
+    tools: [ruby]
+    arguments: []
+    dependency: Ruby
+
+  - language: C
+    extensions: [c]
+    mode: compile
+    tools: [cc, clang, gcc]
+    arguments: ["{source}", "-o", "{output}"]
+    dependency: "a C compiler (cc, clang, or gcc)"
+
+  - language: C++
+    extensions: [cc, cpp, cxx]
+    mode: compile
+    tools: [c++, clang++, g++]
+    arguments: ["{source}", "-o", "{output}"]
+    dependency: "a C++ compiler (c++, clang++, or g++)"
+
+  - language: Rust
+    extensions: [rs]
+    mode: unsupported
+    tools: [rustc]
+    arguments: ["{source}", "-o", "{output}"]
+    dependency: rustc
+
+  - language: D
+    extensions: [d]
+    mode: compile
+    tools: [ldc2, dmd, gdc]
+    arguments: ["{source}", "-of={output}"]
+    dependency: a D compiler
+
+  - language: Go
+    extensions: [go]
+    mode: unsupported
+    tools: [go]
+    arguments: [build, -o, "{output}", "{source}"]
+    dependency: the Go toolchain
+
+  - language: Java
+    extensions: [java]
+    mode: unsupported
+    tools: [java, javac]
+    arguments: []
+    dependency: the Java runtime and compiler
+
+  - language: C#
+    extensions: [cs]
+    mode: unsupported
+    tools: [dotnet, csc, mcs]
+    arguments: []
+    dependency: a C# compiler/runtime
+
+  - language: Swift
+    extensions: [swift]
+    mode: unsupported
+    tools: [swiftc]
+    arguments: ["{source}", -o, "{output}"]
+    dependency: swiftc
+
+  - language: Zig
+    extensions: [zig]
+    mode: unsupported
+    tools: [zig]
+    arguments: [build-exe, "{source}", "-femit-bin={output}"]
+    dependency: zig
+
+  - language: TypeScript
+    extensions: [ts, tsx]
+    mode: unsupported
+    tools: [tsx, ts-node, tsc]
+    arguments: ["{source}"]
+    dependency: a TypeScript runtime/compiler
+
+  - language: Kotlin
+    extensions: [kt, kts]
+    mode: unsupported
+    tools: [kotlinc, kotlin]
+    arguments: []
+    dependency: the Kotlin runtime/compiler

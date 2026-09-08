@@ -39,7 +39,7 @@ pub fn print(command: &str) {
             "Usage: nox graph\n\nPrint targets in dependency order. Dependencies appear before targets that consume them."
         }
         "run" => {
-            "Usage: nox run TARGET [ARGS...]\n\nCompile the project and run an executable target. Arguments after TARGET are passed to the program.\n\nExample:\n  nox run nox --help"
+            "Usage: nox run [PATH|TARGET] [-- ARGS...]\n\nRun the current project, a named executable target, or a source file. Direct-runtime files are executed through their runtime; C and C++ files are compiled to a temporary executable first.\n\nUse -- to forward arguments to the child process.\n\nExamples:\n  nox run .\n  nox run nox -- --version\n  nox run examples/fsharp/Test.fsx\n  nox run examples/c/Test.c -- hello world"
         }
         "test" => {
             "Usage: nox test\n\nRun the task named test from noxfile. Equivalent to nox task test."
