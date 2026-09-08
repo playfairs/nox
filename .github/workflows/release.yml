@@ -1,0 +1,134 @@
+name: Publish release assets
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate-release:
+    name: Validate master release
+    if: github.event.release.target_commitish == 'master'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+    steps:
+      - name: Check out release target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+      - name: Validate release version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          version="$(cat VERSION)"
+          release_version="${RELEASE_TAG#v}"
+          semver_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          [[ "$version" =~ $semver_regex ]]
+          [[ "$release_version" =~ $semver_regex ]]
+          release_base="${release_version%%-*}"
+          test "$release_base" = "$version"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'release_tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  linux-build:
+    name: Linux x86_64
+    needs: validate-release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out release target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Build release executable
+        shell: bash
+        env:
+          VERSION: ${{ needs.validate-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
+          output="build-ci/release/nox/nox"
+          test -x "$output"
+          test "$("$output" --version)" = "nox $VERSION"
+          mkdir -p dist
+          cp "$output" "dist/nox-v${VERSION}-linux-x86_64"
+      - name: Upload release executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-x86_64
+          path: dist/nox-v*-linux-x86_64
+          if-no-files-found: error
+
+  macos-build:
+    name: macOS arm64
+    needs: validate-release
+    runs-on: macos-14
+    steps:
+      - name: Check out release target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Build release executable
+        shell: bash
+        env:
+          VERSION: ${{ needs.validate-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
+          output="build-ci/release/nox/nox"
+          test -x "$output"
+          test "$("$output" --version)" = "nox $VERSION"
+          mkdir -p dist
+          cp "$output" "dist/nox-v${VERSION}-macos-arm64"
+      - name: Upload release executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-arm64
+          path: dist/nox-v*-macos-arm64
+          if-no-files-found: error
+
+  upload-release:
+    name: Upload assets to existing release
+    needs: [validate-release, linux-build, macos-build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download release executables
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: false
+      - name: Verify release assets
+        shell: bash
+        env:
+          VERSION: ${{ needs.validate-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          linux_asset="dist/release-linux-x86_64/nox-v${VERSION}-linux-x86_64"
+          macos_asset="dist/release-macos-arm64/nox-v${VERSION}-macos-arm64"
+          test -f "$linux_asset"
+          test -f "$macos_asset"
+          chmod +x "$linux_asset" "$macos_asset"
+      - name: Upload assets to existing GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-release.outputs.release_tag }}
+          files: |
+            dist/release-linux-x86_64/nox-v${{ needs.validate-release.outputs.version }}-linux-x86_64
+            dist/release-macos-arm64/nox-v${{ needs.validate-release.outputs.version }}-macos-arm64
