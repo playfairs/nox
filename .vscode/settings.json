@@ -1,5 +1,8 @@
 {
   "files.associations": {
     "VERSION": "plaintext"
-  }
+  },
+  "nox.lint.exclude": [
+    "tests/fixtures/parser/duplicate-bindings/nox.build"
+  ]
 }
