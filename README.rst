@@ -7,7 +7,7 @@ The Nox Build System.
 .. raw:: html
 
    <p align="center">
-      <img src="https://raw.githubusercontent.com/playfairs/nox/master/assets/icon.png" width="80">
+      <img src="https://raw.githubusercontent.com/playfairs/nox/master/assets/icon.png" width="150">
    </p>
 
 .. raw:: html
