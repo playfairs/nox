@@ -4,6 +4,14 @@ nox
 
 The Nox Build System.
 
+.. image:: https://raw.githubusercontent.com/playfairs/nox/master/assets/icon.png
+   :width: 80px
+   :align: center
+
+.. raw:: html
+
+   <h2 align="center">The Nox Build System</h2>
+
 Nox is a cross-platform build system and task runner written in Rust. Its core
 models projects, targets, dependencies, toolchains, Riders, and structured
 build actions independently of any one language.
