@@ -6,7 +6,9 @@
 
 .. raw:: html
 
-   <h1 align="center"><font color="#C4A7E7">Nox</font></h1>
+   <p align="center">
+      <img src="https://raw.githubusercontent.com/playfairs/nox/master/assets/title.svg" alt="Nox">
+   </p>
    
    <h2 align="center">The Nox Build System</h2>
 
