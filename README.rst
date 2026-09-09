@@ -4,9 +4,11 @@ nox
 
 The Nox Build System.
 
-.. image:: https://raw.githubusercontent.com/playfairs/nox/master/assets/icon.png
-   :width: 80px
-   :align: center
+.. raw:: html
+
+   <p align="center">
+      <img src="https://raw.githubusercontent.com/playfairs/nox/master/assets/icon.png" width="80">
+   </p>
 
 .. raw:: html
 
