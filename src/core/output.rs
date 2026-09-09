@@ -8,6 +8,7 @@ const MAGENTA: &str = "\x1b[35m";
 const RED: &str = "\x1b[31m";
 const YELLOW: &str = "\x1b[33m";
 const BOLD: &str = "\x1b[1m";
+const IRIS: &str = "\x1b[38;2;196;167;231m"; // Comes from https://rosepinetheme.com/palette/iris
 const RESET: &str = "\x1b[0m";
 
 fn colorize(color: &str, message: impl Display) -> String {
@@ -16,6 +17,15 @@ fn colorize(color: &str, message: impl Display) -> String {
         format!("{color}{message}{RESET}")
     } else {
         message
+    }
+}
+
+fn hyperlink(url: &str, text: impl Display) -> String {
+    let text = text.to_string();
+    if io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none() {
+        format!("\x1b]8;;{url}\x1b\\{BOLD}{IRIS}{text}{RESET}\x1b]8;;\x1b\\")
+    } else {
+        text
     }
 }
 
@@ -82,6 +92,8 @@ pub fn help(message: &str) {
     for value in message.lines() {
         if value.is_empty() {
             line(String::new());
+        } else if value == "The Nox Build System" {
+            line(hyperlink("https://github.com/playfairs/nox", value));
         } else if value == "Commands:" || value == "Options:" {
             line(colorize(&format!("{BOLD}{CYAN}"), value));
         } else if let Some(rest) = value.strip_prefix("Usage: ") {
