@@ -1,5 +1,5 @@
 use crate::core::error::{Error, Result};
-use crate::core::model::{Project, Target, TargetKind};
+use crate::core::model::{Project, Setting, Target, TargetKind};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 enum Token {
     Word(String),
     String(String),
+    Command(String),
     Symbol(char),
 }
 
@@ -31,6 +32,7 @@ pub fn parse(text: &str, root: &Path) -> Result<Project> {
         position: 0,
         root,
         bindings: HashMap::new(),
+        settings: HashMap::new(),
     };
     parser.project()
 }
@@ -70,7 +72,7 @@ fn lex(text: &str) -> Result<Vec<Token>> {
                 _ => {}
             }
         }
-        if "{}[]=(),".contains(character) {
+        if "{}[]=(),:".contains(character) {
             tokens.push(Token::Symbol(character));
             continue;
         }
@@ -98,9 +100,27 @@ fn lex(text: &str) -> Result<Vec<Token>> {
             tokens.push(Token::String(value));
             continue;
         }
+        if character == '`' {
+            let mut value = String::new();
+            let mut closed = false;
+            while let Some(next) = chars.next() {
+                if next == '`' {
+                    closed = true;
+                    break;
+                }
+                value.push(next);
+            }
+            if !closed {
+                return Err(Error::Parse(
+                    "unterminated command substitution".to_string(),
+                ));
+            }
+            tokens.push(Token::Command(value));
+            continue;
+        }
         let mut value = String::from(character);
         while let Some(next) = chars.peek().copied() {
-            if next.is_whitespace() || "{}[]=(),\"".contains(next) {
+            if next.is_whitespace() || "{}[]=(),:\"`".contains(next) {
                 break;
             }
             value.push(next);
@@ -116,10 +136,18 @@ struct Parser<'a> {
     position: usize,
     root: &'a Path,
     bindings: HashMap<String, Value>,
+    settings: HashMap<String, Setting>,
 }
 
 impl<'a> Parser<'a> {
     fn project(&mut self) -> Result<Project> {
+        loop {
+            if self.take_word("set") || self.is_setting_start() {
+                self.setting()?;
+            } else {
+                break;
+            }
+        }
         self.expect_word("project")?;
         let name = self.string_or_word()?;
         self.expect_symbol('{')?;
@@ -190,7 +218,41 @@ impl<'a> Parser<'a> {
             edition,
             dependencies,
             targets,
+            settings: self.settings.clone(),
         })
+    }
+
+    fn setting(&mut self) -> Result<()> {
+        let name = self.word()?;
+        self.expect_symbol(':')?;
+        self.expect_symbol('=')?;
+        let value = self.value()?;
+        let setting = match self.resolve(&value)? {
+            Value::String(value) => Setting::String(value),
+            Value::List(values) => Setting::List(
+                values
+                    .into_iter()
+                    .map(|value| match value {
+                        Value::String(value) => Ok(value),
+                        _ => Err(Error::Config(format!(
+                            "setting '{name}' must contain only strings"
+                        ))),
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+            ),
+            Value::Bool(_) | Value::Reference(_) => {
+                return Err(Error::Config(format!(
+                    "setting '{name}' must be a string or list"
+                )));
+            }
+        };
+        self.settings.insert(name, setting);
+        Ok(())
+    }
+
+    fn is_setting_start(&self) -> bool {
+        matches!(self.tokens.get(self.position), Some(Token::Word(_)))
+            && matches!(self.tokens.get(self.position + 1), Some(Token::Symbol(':')))
     }
 
     fn target(&mut self, kind: TargetKind) -> Result<Target> {
@@ -308,6 +370,7 @@ impl<'a> Parser<'a> {
     fn value(&mut self) -> Result<Value> {
         match self.next() {
             Some(Token::String(value)) => Ok(Value::String(value)),
+            Some(Token::Command(command)) => run_command_substitution(&command),
             Some(Token::Word(value)) => {
                 if value == "true" {
                     Ok(Value::Bool(true))
@@ -455,6 +518,31 @@ impl<'a> Parser<'a> {
         self.position += usize::from(token.is_some());
         token
     }
+}
+
+fn run_command_substitution(command: &str) -> Result<Value> {
+    let output = if cfg!(windows) {
+        std::process::Command::new("cmd")
+            .args(["/C", command])
+            .output()?
+    } else {
+        std::process::Command::new("sh")
+            .args(["-c", command])
+            .output()?
+    };
+    if !output.status.success() {
+        return Err(Error::Process(format!(
+            "command substitution '{command}' exited with {}",
+            output.status
+        )));
+    }
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        return Err(Error::Config(format!(
+            "command substitution '{command}' produced no output"
+        )));
+    }
+    Ok(Value::String(value))
 }
 
 fn expand_glob(root: &Path, pattern: &str) -> Result<Vec<String>> {

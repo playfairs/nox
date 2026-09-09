@@ -1,4 +1,11 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Setting {
+    String(String),
+    List(Vec<String>),
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TargetKind {
@@ -34,6 +41,7 @@ pub struct Project {
     pub edition: String,
     pub dependencies: Vec<String>,
     pub targets: Vec<Target>,
+    pub settings: HashMap<String, Setting>,
 }
 
 impl Project {

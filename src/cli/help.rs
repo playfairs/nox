@@ -47,6 +47,9 @@ pub fn print(command: &str) {
         "task" => {
             "Usage: nox task NAME\n\nFind NAME in noxfile and execute its run command. YAML-style and legacy task syntax are supported."
         }
+        "tasks" => {
+            "Usage: nox tasks\n\nList available task names from noxfile in alphabetical order."
+        }
         "version" => {
             "Usage: nox version\n\nPrint the installed Nox version. --version, -V, and -v are also accepted."
         }

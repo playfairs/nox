@@ -21,6 +21,17 @@ project "nox" {
 
 Whitespace is insignificant. Nox supports C-style comments: `//` starts a line comment and `/* ... */` starts a block comment. The legacy `#` line comment is also accepted. Strings use double quotes. Statements do not require semicolons.
 
+Top-level task settings may appear before the project declaration. Both forms
+are accepted:
+
+```text
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+version := `cargo xtask`
+```
+
+Backtick values run through the platform shell while parsing. String settings
+can be referenced by noxfile commands as `{{NAME}}`.
+
 ```text
 // Project metadata
 project "example" {

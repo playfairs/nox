@@ -203,7 +203,7 @@ pub fn run() -> Result<()> {
                 Err(Error::Exit(code))
             }
         }
-        "test" => task::run_task(&root.join("noxfile"), "test"),
+        "test" => task::run_task(&root.join("noxfile"), "test", &state_dir),
         "install" => {
             let prefix = if prefix.is_absolute() {
                 prefix
@@ -225,7 +225,14 @@ pub fn run() -> Result<()> {
             positional
                 .first()
                 .ok_or_else(|| Error::Config("task requires a name".to_string()))?,
+            &state_dir,
         ),
+        "tasks" => {
+            for name in task::list_tasks(&root.join("noxfile"))? {
+                output::item(name);
+            }
+            Ok(())
+        }
         "help" => {
             help::print(positional.first().map(String::as_str).unwrap_or(""));
             Ok(())
