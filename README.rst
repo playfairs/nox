@@ -1,9 +1,3 @@
-====
-nox
-====
-
-The Nox Build System.
-
 .. raw:: html
 
    <p align="center">
@@ -12,6 +6,8 @@ The Nox Build System.
 
 .. raw:: html
 
+   <h2 align="center">Nox</h2>
+   
    <h2 align="center">The Nox Build System</h2>
 
 Nox is a cross-platform build system and task runner written in Rust. Its core
