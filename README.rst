@@ -6,7 +6,7 @@
 
 .. raw:: html
 
-   <h2 align="center">Nox</h2>
+   <h1 align="center">Nox</h1>
    
    <h2 align="center">The Nox Build System</h2>
 
