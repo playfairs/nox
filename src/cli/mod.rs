@@ -18,6 +18,14 @@ fn version() -> &'static str {
     include_str!("../../VERSION").trim()
 }
 
+fn resolve_command_alias(name: &str) -> &str {
+    match name {
+        "b" => "build",
+        "r" => "run",
+        _ => name,
+    }
+}
+
 pub fn run() -> Result<()> {
     let mut arguments = std::env::args().skip(1);
     let first = arguments.next();
@@ -27,7 +35,7 @@ pub fn run() -> Result<()> {
     }
     let command = match first.as_deref() {
         Some("--help" | "-h") | None => "help".to_string(),
-        Some(value) => value.to_string(),
+        Some(value) => resolve_command_alias(value).to_string(),
     };
     let mut build_dir = PathBuf::from("build");
     let mut build_dir_explicit = false;
@@ -547,8 +555,16 @@ fn default_install_prefix() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{bump_version, version_files};
+    use super::{bump_version, resolve_command_alias, version_files};
     use std::fs;
+
+    #[test]
+    fn resolves_short_command_aliases() {
+        assert_eq!(resolve_command_alias("b"), "build");
+        assert_eq!(resolve_command_alias("build"), "build");
+        assert_eq!(resolve_command_alias("r"), "run");
+        assert_eq!(resolve_command_alias("run"), "run");
+    }
 
     #[test]
     fn bumps_version_references_in_project_files() {
