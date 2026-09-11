@@ -13,6 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod help;
+mod init;
 
 fn version() -> &'static str {
     include_str!("../../VERSION").trim()
@@ -49,6 +50,7 @@ pub fn run() -> Result<()> {
         .unwrap_or(1);
     let mut positional = Vec::new();
     let mut run_arguments = Vec::new();
+    let mut init_options = init::Options::default();
     while let Some(argument) = arguments.next() {
         if command == "run" && argument == "--" {
             run_arguments.extend(arguments);
@@ -95,6 +97,37 @@ pub fn run() -> Result<()> {
                         .ok_or_else(|| Error::Config("--prefix requires a path".to_string()))?,
                 )
             }
+            "--name" => {
+                init_options.name = Some(
+                    arguments
+                        .next()
+                        .ok_or_else(|| Error::Config("--name requires a value".to_string()))?,
+                )
+            }
+            "--language" => {
+                init_options.language = Some(
+                    arguments
+                        .next()
+                        .ok_or_else(|| Error::Config("--language requires a value".to_string()))?,
+                )
+            }
+            "--type" => {
+                init_options.project_type = Some(
+                    arguments
+                        .next()
+                        .ok_or_else(|| Error::Config("--type requires a value".to_string()))?,
+                )
+            }
+            "--template" => {
+                init_options.template = Some(
+                    arguments
+                        .next()
+                        .ok_or_else(|| Error::Config("--template requires a value".to_string()))?,
+                )
+            }
+            "--no-noxfile" => init_options.noxfile = false,
+            "--no-nix" => init_options.nix = false,
+            "--formatter" => init_options.formatter = true,
             value if value.starts_with('-') => {
                 return Err(Error::Config(format!("unknown option '{value}'")));
             }
@@ -102,10 +135,21 @@ pub fn run() -> Result<()> {
         }
     }
     if let Some(value) = positional.first() {
+        if command == "init" {
+            init_options.project_name = Some(value.clone());
+        }
         if matches!(command.as_str(), "setup" | "build" | "compile") {
             build_dir_explicit = true;
             build_dir = PathBuf::from(value);
         }
+    }
+    if command == "init" {
+        if help_requested {
+            help::print(&command);
+            return Ok(());
+        }
+        let root = init::resolve_root(init_options.project_name.as_deref())?;
+        return init::run(&root, init_options);
     }
     let root = project_root()?;
     if !build_dir_explicit && !matches!(command.as_str(), "setup" | "configure") {

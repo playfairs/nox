@@ -59,6 +59,9 @@ pub fn print(command: &str) {
         "help" => {
             "Usage: nox help [COMMAND]\n\nShow general help or detailed help for one command. Every command accepts --help and -h."
         }
+        "init" => {
+            "Usage: nox init [PROJECT_NAME] [OPTIONS]\n\nAnalyze and initialize a project without overwriting existing files.\n\nOptions: --name NAME, --language LANGUAGE, --type TYPE, --template NAME, --no-nix, --formatter, --no-noxfile"
+        }
         _ => "Unknown command. Run 'nox --help' to list available commands.",
     };
     output::help(text);
