@@ -14,6 +14,19 @@ nox --version
 nox -v
 ```
 
+## `nox init [PROJECT_NAME]`
+
+Analyze the current directory, or create a named project directory, and generate a safe Nox configuration. Existing files are preserved. Empty projects receive language-aware source and ecosystem files; existing projects are inspected for manifests, source languages, build systems, Nix, formatters, Git, tests, and existing Nox files.
+
+```sh
+nox init
+nox init my-project --language rust --type executable
+nox init my-project --language typescript --no-nix --no-noxfile
+nox init --language c --formatter
+```
+
+Use `--name`, `--language`, `--type`, and `--template` to provide answers in automation. `--no-nix` and `--no-noxfile` disable those generated components; `--formatter` requests a supported language formatter. Generated files are written only when absent, so an existing `nox.build`, `noxfile`, `flake.nix`, package manifest, README, or formatter configuration is preserved.
+
 ## `nox bump-version [major|minor|patch|VERSION]`
 
 Bump the project version and update its references. With no argument, the patch
