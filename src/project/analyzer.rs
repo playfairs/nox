@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Language {
     Rust,
+    Haskell,
     C,
     Cpp,
     D,
@@ -21,6 +22,7 @@ impl Language {
     pub fn parse(value: &str) -> Option<Self> {
         match value.to_ascii_lowercase().as_str() {
             "rust" => Some(Self::Rust),
+            "haskell" | "hs" => Some(Self::Haskell),
             "c" => Some(Self::C),
             "cpp" | "c++" | "cxx" => Some(Self::Cpp),
             "d" => Some(Self::D),
@@ -36,6 +38,7 @@ impl Language {
     pub fn label(self) -> &'static str {
         match self {
             Self::Rust => "Rust",
+            Self::Haskell => "Haskell",
             Self::C => "C",
             Self::Cpp => "C++",
             Self::D => "D",
@@ -114,6 +117,8 @@ pub fn analyze(root: &Path) -> Result<Analysis> {
         analysis.project_type = Some(
             if analysis.source_files.iter().any(|path| {
                 path.file_name().and_then(|name| name.to_str()) == Some("main.rs")
+                    || path.file_name().and_then(|name| name.to_str()) == Some("Main.hs")
+                    || path.file_name().and_then(|name| name.to_str()) == Some("main.hs")
                     || path.file_name().and_then(|name| name.to_str()) == Some("main.c")
                     || path.file_name().and_then(|name| name.to_str()) == Some("main.cpp")
                     || path.file_name().and_then(|name| name.to_str()) == Some("main.swift")
@@ -209,6 +214,7 @@ fn scan(root: &Path, directory: &Path, analysis: &mut Analysis) -> Result<()> {
         }
         let language = match extension {
             "rs" => Some(Language::Rust),
+            "hs" | "lhs" => Some(Language::Haskell),
             "c" => Some(Language::C),
             "cc" | "cpp" | "cxx" | "hpp" => Some(Language::Cpp),
             "d" => Some(Language::D),
@@ -227,6 +233,8 @@ fn scan(root: &Path, directory: &Path, analysis: &mut Analysis) -> Result<()> {
                     | "cpp"
                     | "cxx"
                     | "rs"
+                    | "hs"
+                    | "lhs"
                     | "d"
                     | "swift"
                     | "fsx"

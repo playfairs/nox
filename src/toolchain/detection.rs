@@ -52,6 +52,7 @@ pub fn detect_rider(kind: RiderKind) -> Result<String> {
         RiderKind::JavaScript => &["node"],
         RiderKind::TypeScript => &["tsc"],
         RiderKind::Kotlin => &["kotlinc"],
+        RiderKind::Haskell => &["ghc"],
         RiderKind::C | RiderKind::Cpp | RiderKind::Rust => {
             return Err(Error::Config(
                 "Rider uses the native toolchain detector".to_string(),

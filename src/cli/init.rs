@@ -262,6 +262,10 @@ fn source_path(
     let (relative, contents) = match (language, project_type) {
         (Language::Rust, ProjectType::Library) => ("src/lib.rs", "pub fn run() {}\n"),
         (Language::Rust, ProjectType::Executable) => ("src/main.rs", "fn main() {}\n"),
+        (Language::Haskell, _) => (
+            "app/Main.hs",
+            "module Main where\n\nmain :: IO ()\nmain = putStrLn \"hello from Nox\"\n",
+        ),
         (Language::C, _) => (
             "src/main.c",
             "#include <stdio.h>\n\nint main(void) {\n    puts(\"hello from Nox\");\n    return 0;\n}\n",
@@ -311,6 +315,7 @@ fn nox_build(
 fn flake(language: Language, formatter_enabled: bool) -> String {
     let package = match language {
         Language::Rust => "rustc cargo rustfmt",
+        Language::Haskell => "ghc cabal-install fourmolu",
         Language::C | Language::Cpp => "clang clang-tools",
         Language::D => "ldc",
         Language::Swift => "swift",
@@ -333,6 +338,7 @@ fn flake(language: Language, formatter_enabled: bool) -> String {
 fn formatter(language: Language) -> Option<(&'static str, &'static str)> {
     match language {
         Language::Rust => Some(("rustfmt.toml", "edition = \"2024\"\n")),
+        Language::Haskell => Some(("fourmolu.yaml", "indentation: 2\n")),
         Language::C | Language::Cpp => {
             Some((".clang-format", "BasedOnStyle: LLVM\nIndentWidth: 4\n"))
         }
@@ -351,6 +357,7 @@ fn formatter(language: Language) -> Option<(&'static str, &'static str)> {
 fn nix_formatter(language: Language) -> String {
     let package = match language {
         Language::Rust => "rustfmt",
+        Language::Haskell => "fourmolu",
         Language::C | Language::Cpp => "clang-tools",
         Language::JavaScript | Language::TypeScript => "nodePackages.prettier",
         Language::Swift => "swift-format",
@@ -364,6 +371,7 @@ fn nix_formatter(language: Language) -> String {
 fn noxfile(language: Language) -> String {
     let format_command = match language {
         Language::Rust => "cargo fmt --all",
+        Language::Haskell => "fourmolu -i $(find app src test -type f -name '*.hs')",
         Language::C | Language::Cpp => "clang-format -i $(find src -type f)",
         Language::JavaScript | Language::TypeScript => "npx prettier --write .",
         Language::Swift => "swift-format format --in-place Sources/*.swift",
@@ -399,6 +407,7 @@ fn readme(name: &str, nix: bool) -> String {
 fn gitignore(language: Language) -> &'static str {
     match language {
         Language::Rust => "target/\nbuild/\n",
+        Language::Haskell => "dist-newstyle/\nbuild/\n",
         Language::JavaScript | Language::TypeScript => "node_modules/\ndist/\n",
         _ => "build/\n",
     }

@@ -11,6 +11,7 @@ fn resolves_supported_file_handlers() {
         ("Test.rb", "Ruby"),
         ("Test.py", "Python"),
         ("Test.js", "JavaScript"),
+        ("Test.hs", "Haskell"),
     ] {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/run/handlers")

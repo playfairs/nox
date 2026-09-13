@@ -50,6 +50,13 @@ handlers:
     arguments: ["{source}", "-o", "{output}"]
     dependency: rustc
 
+  - language: Haskell
+    extensions: [hs, lhs]
+    mode: compile
+    tools: [ghc]
+    arguments: ["{source}", "-o", "{output}"]
+    dependency: GHC
+
   - language: D
     extensions: [d]
     mode: compile

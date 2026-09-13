@@ -5,6 +5,7 @@ pub enum RiderKind {
     C,
     Cpp,
     Rust,
+    Haskell,
     D,
     Go,
     Java,
@@ -44,6 +45,12 @@ pub fn available() -> &'static [Rider] {
             kind: RiderKind::Rust,
             description: "Builds basic Rust executables and libraries through rustc.",
             extensions: &["rs"],
+        },
+        Rider {
+            name: "Haskell Rider",
+            kind: RiderKind::Haskell,
+            description: "Builds Haskell executables through GHC.",
+            extensions: &["hs", "lhs"],
         },
         Rider {
             name: "D Rider",
@@ -113,4 +120,22 @@ pub fn for_source(source: &Path) -> Option<&'static Rider> {
     available()
         .iter()
         .find(|rider| rider.extensions.contains(&extension))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RiderKind, for_source};
+    use std::path::Path;
+
+    #[test]
+    fn resolves_haskell_sources() {
+        assert_eq!(
+            for_source(Path::new("Main.hs")).unwrap().kind,
+            RiderKind::Haskell
+        );
+        assert_eq!(
+            for_source(Path::new("Main.lhs")).unwrap().kind,
+            RiderKind::Haskell
+        );
+    }
 }

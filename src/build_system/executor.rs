@@ -331,6 +331,18 @@ fn build_external_target(
                 .arg(&output);
             run(command)?;
         }
+        crate::toolchain::rider::RiderKind::Haskell => {
+            let mut command = Command::new(tool);
+            command
+                .args(["-outputdir"])
+                .arg(output_dir)
+                .args(&target.sources)
+                .args(["-o"])
+                .arg(&output)
+                .args(&target.flags)
+                .args(&state.compile_flags);
+            run(command)?;
+        }
         crate::toolchain::rider::RiderKind::C
         | crate::toolchain::rider::RiderKind::Cpp
         | crate::toolchain::rider::RiderKind::Rust => {
