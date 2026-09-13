@@ -24,6 +24,7 @@ The Rider catalog currently contains these built-in Riders:
 - C Rider for `.c` sources
 - C++ Rider for `.cpp`, `.cc`, and `.cxx` sources
 - Rust Rider for `.rs` sources
+- Haskell Rider for `.hs` and `.lhs` sources
 
 Go, Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin also have direct backend action paths. Their toolchains are detected when the target is built, so a missing compiler or interpreter produces a specific toolchain error.
 

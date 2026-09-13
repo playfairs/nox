@@ -123,7 +123,7 @@ List the language and toolchain Riders available to the current Nox binary:
 nox riders
 ```
 
-Riders include C, C++, Rust, Go, Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin. Each Rider has a direct backend action path; builds report a clear toolchain error when the required compiler or interpreter is not installed.
+Riders include C, C++, Rust, Haskell, Go, Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin. Each Rider has a direct backend action path; builds report a clear toolchain error when the required compiler or interpreter is not installed.
 
 ## `nox install [--prefix PATH] [--release]`
 
