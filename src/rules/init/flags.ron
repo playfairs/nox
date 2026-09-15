@@ -1,3 +1,0 @@
-[
-    (name: "cxx_standard", values: ["-std=c++20"], languages: [Cpp], order: 10),
-]

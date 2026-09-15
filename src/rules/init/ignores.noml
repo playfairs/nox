@@ -1,0 +1,33 @@
+ruleset "ignores" {
+    ignore: ".git" {
+        kind: "directory"
+    },
+
+    ignore: "target" {
+        kind: "directory"
+    },
+
+    ignore: "build" {
+        kind: "directory"
+    },
+
+    ignore: "builddir" {
+        kind: "directory"
+    },
+
+    ignore: "node_modules" {
+        kind: "directory"
+    },
+
+    ignore: "dist" {
+        kind: "directory"
+    },
+
+    ignore: ".nox" {
+        kind: "directory"
+    },
+
+    ignore: ".cache" {
+        kind: "directory"
+    }
+}

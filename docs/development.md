@@ -49,6 +49,10 @@ Add argument handling and dispatch in `src/cli.rs`, then update:
 
 Commands that mutate or execute files should return an error for a failed process rather than printing a success message.
 
+## Nox rulefiles
+
+Built-in rules under `src/rules/base` use the Nox rulefile format and the `.nox` extension. Rulefiles are embedded at compile time and loaded by the owning Rust module. Keep command metadata in `commands.nox` and argument metadata in `args.nox`; update the rulefile parser and its tests when adding new fields.
+
 ## Testing a project externally
 
 Create a temporary project containing `nox.build`, run setup and build from that directory, and verify the produced artifact. Test at least:

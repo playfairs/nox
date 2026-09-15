@@ -1,0 +1,79 @@
+ruleset "layouts" {
+    layout: src {
+        directory: "src"
+        priority: 100
+        role: "source"
+    },
+
+    layout: source {
+        directory: "source"
+        priority: 90
+        role: "source"
+    },
+
+    layout: app {
+        directory: "app"
+        priority: 80
+        role: "source"
+    },
+
+    layout: lib {
+        directory: "lib"
+        priority: 70
+        role: "source"
+    },
+
+    layout: include {
+        directory: "include"
+        priority: 100
+        role: "include"
+    },
+
+    layout: includes {
+        directory: "includes"
+        priority: 90
+        role: "include"
+    },
+
+    layout: inc {
+        directory: "inc"
+        priority: 80
+        role: "include"
+    },
+
+    layout: headers {
+        directory: "headers"
+        priority: 70
+        role: "include"
+    },
+
+    layout: public {
+        directory: "public"
+        priority: 60
+        role: "include"
+    },
+
+    layout: tests {
+        directory: "tests"
+        priority: 100
+        role: "test"
+    },
+
+    layout: test {
+        directory: "test"
+        priority: 90
+        role: "test"
+    },
+
+    layout: spec {
+        directory: "spec"
+        priority: 80
+        role: "test"
+    },
+
+    layout: examples {
+        directory: "examples"
+        priority: 70
+        role: "example"
+    }
+}

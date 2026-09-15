@@ -1,7 +1,0 @@
-[
-    (name: "sources", order: 10, required: true, automatic: true),
-    (name: "include_dirs", order: 20, required: false, automatic: true),
-    (name: "flags", order: 30, required: false, automatic: true),
-    (name: "dependencies", order: 40, required: false, automatic: false),
-    (name: "install", order: 50, required: false, automatic: true),
-]

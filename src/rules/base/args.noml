@@ -1,0 +1,46 @@
+ruleset "arguments" {
+    argument: help {
+        takes_value: false
+        repeatable: false
+    },
+
+    argument: version {
+        takes_value: false
+        repeatable: false
+    },
+
+    argument: jobs {
+        takes_value: true
+        repeatable: false
+    },
+
+    argument: build-dir {
+        takes_value: true
+        repeatable: false
+    },
+
+    argument: compile-flag {
+        takes_value: true
+        repeatable: true
+    },
+
+    argument: prefix {
+        takes_value: true
+        repeatable: false
+    },
+
+    argument: release {
+        takes_value: false
+        repeatable: false
+    },
+
+    argument: debug {
+        takes_value: false
+        repeatable: false
+    },
+
+    argument: reconfigure {
+        takes_value: false
+        repeatable: false
+    }
+}
