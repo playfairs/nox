@@ -405,6 +405,17 @@ fn compile(
         } else {
             command.arg("-O2");
         }
+        let is_cpp = target.kind == TargetKind::CppExecutable
+            || crate::toolchain::rider::for_source(source)
+                .is_some_and(|rider| rider.kind == crate::toolchain::rider::RiderKind::Cpp);
+        if is_cpp
+            && !target
+                .flags
+                .iter()
+                .any(|flag| flag.starts_with("-std=") || flag.starts_with("/std:"))
+        {
+            command.arg("-std=c++20");
+        }
         command
             .args(&target.flags)
             .args(&state.compile_flags)

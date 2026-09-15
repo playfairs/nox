@@ -4,6 +4,7 @@ use crate::core::error::{Error, Result};
 use crate::core::graph;
 use crate::core::model::{Target, TargetKind};
 use crate::core::output;
+use crate::init;
 use crate::project::parser;
 use crate::project_root;
 use crate::run;
@@ -13,7 +14,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod help;
-mod init;
 
 fn version() -> &'static str {
     include_str!("../../VERSION").trim()
@@ -148,8 +148,13 @@ pub fn run() -> Result<()> {
             help::print(&command);
             return Ok(());
         }
-        let root = init::resolve_root(init_options.project_name.as_deref())?;
-        return init::run(&root, init_options);
+        let root = init::resolve_root(init_options.project_name.as_deref())
+            .map_err(crate::init::error::Error::into_core)?;
+        return init::run(&root, init_options).map_err(crate::init::error::Error::into_core);
+    }
+    if command == "help" {
+        help::print(positional.first().map(String::as_str).unwrap_or(""));
+        return Ok(());
     }
     if help_requested {
         help::print(&command);

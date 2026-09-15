@@ -1,6 +1,7 @@
 pub mod build_system;
 pub mod cli;
 pub mod core;
+pub mod init;
 pub mod project;
 pub mod run;
 pub mod task;
