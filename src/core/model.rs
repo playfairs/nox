@@ -34,7 +34,7 @@ pub struct Target {
 #[derive(Clone, Debug)]
 pub struct Project {
     pub name: String,
-    pub version: String,
+    pub version: Option<String>,
     pub version_files: Option<Vec<PathBuf>>,
     pub description: String,
     pub license: String,

@@ -50,7 +50,7 @@ Required. The project name is displayed during setup.
 
 ### `version = VERSION`
 
-Optional. Defaults to the version in the repository `VERSION` file. A version can explicitly load a project-relative file with the native `file` expression:
+Optional. If omitted, the project has no version. A version can explicitly load a project-relative file with the native `file` expression:
 
 ```text
 version = file("./VERSION")

@@ -28,7 +28,9 @@ pub fn run_task(path: &Path, name: &str, build_dir: &Path) -> Result<()> {
     let context = if path.with_file_name("nox.build").is_file() {
         let project = parser::parse_file(&path.with_file_name("nox.build"))?;
         TaskContext {
-            version: project.version,
+            version: project
+                .version
+                .unwrap_or_else(|| include_str!("../../VERSION").trim().to_string()),
             settings: project.settings,
         }
     } else {

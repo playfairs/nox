@@ -151,7 +151,7 @@ impl<'a> Parser<'a> {
         self.expect_word("project")?;
         let name = self.string_or_word()?;
         self.expect_symbol('{')?;
-        let mut version = include_str!("../../VERSION").trim().to_string();
+        let mut version = None;
         let mut version_files = None;
         let mut description = String::new();
         let mut license = String::new();
@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
                 "let" => self.binding()?,
                 "version" => {
                     self.expect_symbol('=')?;
-                    version = self.string_or_file()?;
+                    version = Some(self.string_or_file()?);
                 }
                 "version_files" => {
                     self.expect_symbol('=')?;

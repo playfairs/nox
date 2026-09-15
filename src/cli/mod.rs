@@ -151,6 +151,10 @@ pub fn run() -> Result<()> {
         let root = init::resolve_root(init_options.project_name.as_deref())?;
         return init::run(&root, init_options);
     }
+    if help_requested {
+        help::print(&command);
+        return Ok(());
+    }
     let root = project_root()?;
     if !build_dir_explicit && !matches!(command.as_str(), "setup" | "configure") {
         if let Some(configured_build_dir) = configured_build_dir(&root)? {
@@ -162,10 +166,6 @@ pub fn run() -> Result<()> {
     } else {
         root.join(build_dir)
     };
-    if help_requested {
-        help::print(&command);
-        return Ok(());
-    }
     match command.as_str() {
         "setup" | "configure" => {
             if reconfigure && state_dir.exists() {
@@ -448,7 +448,13 @@ fn setup(
     configuration: &str,
     compile_flags: Vec<String>,
 ) -> Result<()> {
-    let project = parser::parse_file(&root.join("nox.build"))?;
+    let build_file = root.join("nox.build");
+    let project = parser::parse_file(&build_file).map_err(|error| match error {
+        Error::Io(error) if error.kind() == std::io::ErrorKind::NotFound => Error::Config(format!(
+            "setup could not run: required file 'nox.build' was not found"
+        )),
+        error => error,
+    })?;
     graph::validate(&project)?;
     let (compiler, linker, archiver) = detection::detect_c();
     let state = BuildState {
@@ -462,7 +468,11 @@ fn setup(
     };
     state.save()?;
     write_project_config(root, build_dir)?;
-    output::configured(project.name, project.version, build_dir.display());
+    output::configured(
+        project.name,
+        project.version.as_deref(),
+        build_dir.display(),
+    );
     Ok(())
 }
 
@@ -569,7 +579,11 @@ fn status(build_dir: &Path) -> Result<()> {
     }
     let state = BuildState::load(build_dir)?;
     let project = parser::parse_file(&state.root.join("nox.build"))?;
-    output::key_value("project", format!("{} {}", project.name, project.version));
+    let project_label = project.version.as_deref().map_or_else(
+        || project.name.clone(),
+        |version| format!("{} {version}", project.name),
+    );
+    output::key_value("project", project_label);
     if !project.description.is_empty() {
         output::key_value("description", &project.description);
     }

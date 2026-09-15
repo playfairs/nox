@@ -176,7 +176,8 @@ fn generate(
 ) -> Result<()> {
     let name = options.project_name.as_deref().unwrap_or("project");
     let source = source_path(root, analysis, language, project_type);
-    if analysis.source_files.is_empty() {
+    let discovered_sources = source_files(analysis, language);
+    if discovered_sources.is_empty() {
         write_if_absent(&source.0, &source.1)?;
     }
     if matches!(language, Language::Rust) && !root.join("Cargo.toml").exists() {
@@ -222,9 +223,18 @@ fn generate(
             ),
         )?;
     }
+    let sources = if discovered_sources.is_empty() {
+        vec![source.0.clone()]
+    } else {
+        discovered_sources
+            .iter()
+            .map(|path| root.join(path))
+            .collect()
+    };
+    let include_dirs = include_directories(root, analysis);
     write_if_absent(
         &root.join("nox.build"),
-        &nox_build(name, language, project_type, &source.0, root),
+        &nox_build(name, language, project_type, &sources, &include_dirs, root),
     )?;
     if options.noxfile && !analysis.has_noxfile {
         write_if_absent(&root.join("noxfile"), &noxfile(language))?;
@@ -250,13 +260,59 @@ fn generate(
     Ok(())
 }
 
+fn source_files(analysis: &Analysis, language: Language) -> Vec<PathBuf> {
+    analysis
+        .source_files
+        .iter()
+        .filter(|path| {
+            path.extension()
+                .and_then(|extension| extension.to_str())
+                .and_then(Language::from_extension)
+                == Some(language)
+        })
+        .filter(|path| !analyzer::is_test_path(path))
+        .cloned()
+        .collect()
+}
+
+fn include_directories(root: &Path, analysis: &Analysis) -> Vec<PathBuf> {
+    let mut directories = analysis
+        .header_files
+        .iter()
+        .map(|path| {
+            let components = path.components().collect::<Vec<_>>();
+            let include_root = components.iter().position(|component| {
+                matches!(
+                    component.as_os_str().to_str(),
+                    Some("include" | "includes" | "inc" | "headers" | "public")
+                )
+            });
+            match include_root {
+                Some(index) => components[..=index]
+                    .iter()
+                    .fold(PathBuf::new(), |directory, component| {
+                        directory.join(component.as_os_str())
+                    }),
+                None => path
+                    .parent()
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| PathBuf::from(".")),
+            }
+        })
+        .map(|path| root.join(path))
+        .collect::<Vec<_>>();
+    directories.sort();
+    directories.dedup();
+    directories
+}
+
 fn source_path(
     root: &Path,
     analysis: &Analysis,
     language: Language,
     project_type: ProjectType,
 ) -> (PathBuf, String) {
-    if let Some(path) = analysis.source_files.first() {
+    if let Some(path) = source_files(analysis, language).first() {
         return (root.join(path), String::new());
     }
     let (relative, contents) = match (language, project_type) {
@@ -292,14 +348,43 @@ fn nox_build(
     name: &str,
     language: Language,
     project_type: ProjectType,
-    source: &Path,
+    sources: &[PathBuf],
+    include_dirs: &[PathBuf],
     root: &Path,
 ) -> String {
-    let relative = source
-        .strip_prefix(root)
-        .unwrap_or(source)
-        .to_string_lossy()
-        .replace('\\', "/");
+    let sources = sources
+        .iter()
+        .map(|source| {
+            format!(
+                "        \"{}\"",
+                source
+                    .strip_prefix(root)
+                    .unwrap_or(source)
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+    let include_dirs = if include_dirs.is_empty() {
+        String::new()
+    } else {
+        let directories = include_dirs
+            .iter()
+            .map(|directory| {
+                format!(
+                    "        \"{}\"",
+                    directory
+                        .strip_prefix(root)
+                        .unwrap_or(directory)
+                        .to_string_lossy()
+                        .replace('\\', "/")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",\n");
+        format!("\n        include_dirs = [\n{directories}\n        ]")
+    };
     let target = match (language, project_type) {
         (Language::Rust, ProjectType::Library) => "rust_library",
         (Language::Rust, ProjectType::Executable) => "rust_executable",
@@ -308,7 +393,7 @@ fn nox_build(
         _ => "executable",
     };
     format!(
-        "project \"{name}\" {{\n    description = \"A project built with Nox.\"\n\n    {target} \"{name}\" {{\n        sources = [\"{relative}\"]\n        install = true\n    }}\n}}\n"
+        "project \"{name}\" {{\n    description = \"A project built with Nox.\"\n\n    {target} \"{name}\" {{\n        sources = [\n{sources}\n        ]{include_dirs}\n        install = true\n    }}\n}}\n"
     )
 }
 
@@ -427,8 +512,10 @@ fn write_if_absent(path: &Path, contents: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Options, run};
+    use super::{Options, ProjectType, run, source_files};
+    use crate::project::analyzer::{self, Language};
     use std::fs;
+    use std::path::PathBuf;
 
     #[test]
     fn preserves_existing_nox_configuration() {
@@ -453,6 +540,47 @@ mod tests {
             "existing\n"
         );
         assert!(root.join("README.md").is_file());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn discovers_sorted_non_test_sources_for_generated_target() {
+        let root = std::env::temp_dir().join(format!("nox-init-sources-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("src/nested")).unwrap();
+        fs::create_dir_all(root.join("include/fixture")).unwrap();
+        fs::create_dir_all(root.join("tests")).unwrap();
+        for path in ["src/nested/util.cpp", "src/main.cpp", "tests/test_main.cpp"] {
+            fs::write(root.join(path), "").unwrap();
+        }
+        fs::write(root.join("include/fixture/util.h"), "").unwrap();
+
+        let analysis = analyzer::analyze(&root).unwrap();
+        let sources = source_files(&analysis, Language::Cpp);
+
+        assert_eq!(
+            sources,
+            [
+                PathBuf::from("src/main.cpp"),
+                PathBuf::from("src/nested/util.cpp")
+            ]
+        );
+        let absolute_sources = sources
+            .iter()
+            .map(|path| root.join(path))
+            .collect::<Vec<_>>();
+        let generated = super::nox_build(
+            "fixture",
+            Language::Cpp,
+            ProjectType::Executable,
+            &absolute_sources,
+            &super::include_directories(&root, &analysis),
+            &root,
+        );
+        assert!(generated.contains("\"src/main.cpp\",\n        \"src/nested/util.cpp\""));
+        assert!(generated.contains("include_dirs = [\n        \"include\"\n        ]"));
+        assert!(!generated.contains("test_main.cpp"));
+
         fs::remove_dir_all(root).unwrap();
     }
 }

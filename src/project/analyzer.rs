@@ -50,6 +50,31 @@ impl Language {
             Self::Unknown => "unknown language",
         }
     }
+
+    pub fn from_extension(extension: &str) -> Option<Self> {
+        match extension {
+            "rs" => Some(Self::Rust),
+            "hs" | "lhs" => Some(Self::Haskell),
+            "c" => Some(Self::C),
+            "cc" | "cpp" | "cxx" => Some(Self::Cpp),
+            "d" => Some(Self::D),
+            "swift" => Some(Self::Swift),
+            "fsx" | "fs" => Some(Self::FSharp),
+            "js" | "jsx" | "mjs" => Some(Self::JavaScript),
+            "ts" | "tsx" => Some(Self::TypeScript),
+            "py" => Some(Self::Python),
+            _ => None,
+        }
+    }
+}
+
+pub fn is_test_path(path: &Path) -> bool {
+    path.components().any(|component| {
+        matches!(
+            component.as_os_str().to_str(),
+            Some("test" | "tests" | "spec" | "__tests__")
+        )
+    })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -116,12 +141,13 @@ pub fn analyze(root: &Path) -> Result<Analysis> {
     if analysis.project_type.is_none() && !analysis.source_files.is_empty() {
         analysis.project_type = Some(
             if analysis.source_files.iter().any(|path| {
-                path.file_name().and_then(|name| name.to_str()) == Some("main.rs")
-                    || path.file_name().and_then(|name| name.to_str()) == Some("Main.hs")
-                    || path.file_name().and_then(|name| name.to_str()) == Some("main.hs")
-                    || path.file_name().and_then(|name| name.to_str()) == Some("main.c")
-                    || path.file_name().and_then(|name| name.to_str()) == Some("main.cpp")
-                    || path.file_name().and_then(|name| name.to_str()) == Some("main.swift")
+                !is_test_path(path)
+                    && (path.file_name().and_then(|name| name.to_str()) == Some("main.rs")
+                        || path.file_name().and_then(|name| name.to_str()) == Some("Main.hs")
+                        || path.file_name().and_then(|name| name.to_str()) == Some("main.hs")
+                        || path.file_name().and_then(|name| name.to_str()) == Some("main.c")
+                        || path.file_name().and_then(|name| name.to_str()) == Some("main.cpp")
+                        || path.file_name().and_then(|name| name.to_str()) == Some("main.swift"))
             }) {
                 ProjectType::Executable
             } else {
@@ -212,44 +238,12 @@ fn scan(root: &Path, directory: &Path, analysis: &mut Analysis) -> Result<()> {
             }
             _ => {}
         }
-        let language = match extension {
-            "rs" => Some(Language::Rust),
-            "hs" | "lhs" => Some(Language::Haskell),
-            "c" => Some(Language::C),
-            "cc" | "cpp" | "cxx" | "hpp" => Some(Language::Cpp),
-            "d" => Some(Language::D),
-            "swift" => Some(Language::Swift),
-            "fsx" | "fs" => Some(Language::FSharp),
-            "js" | "jsx" | "mjs" => Some(Language::JavaScript),
-            "ts" | "tsx" => Some(Language::TypeScript),
-            "py" => Some(Language::Python),
-            _ => None,
-        };
+        let language = Language::from_extension(extension);
         if let Some(language) = language {
             analysis.languages.insert(language);
-            if matches!(
-                extension,
-                "c" | "cc"
-                    | "cpp"
-                    | "cxx"
-                    | "rs"
-                    | "hs"
-                    | "lhs"
-                    | "d"
-                    | "swift"
-                    | "fsx"
-                    | "fs"
-                    | "js"
-                    | "jsx"
-                    | "mjs"
-                    | "ts"
-                    | "tsx"
-                    | "py"
-            ) {
-                analysis.source_files.push(relative.to_path_buf());
-                if let Some(parent) = relative.parent() {
-                    analysis.source_directories.insert(parent.to_path_buf());
-                }
+            analysis.source_files.push(relative.to_path_buf());
+            if let Some(parent) = relative.parent() {
+                analysis.source_directories.insert(parent.to_path_buf());
             }
         }
         if matches!(extension, "h" | "hh" | "hpp" | "hxx") {

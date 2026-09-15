@@ -41,15 +41,25 @@ pub fn action(action: impl Display, subject: impl Display) {
     ));
 }
 
-pub fn configured(project: impl Display, version: impl Display, path: impl Display) {
-    line(format!(
-        "{} {} {} {} {}",
-        colorize(&format!("{BOLD}{GREEN}"), "configured"),
-        colorize(CYAN, project),
-        colorize(YELLOW, version),
-        colorize(BLUE, "in"),
-        colorize(CYAN, path)
-    ));
+pub fn configured(project: impl Display, version: Option<&str>, path: impl Display) {
+    let message = match version {
+        Some(version) => format!(
+            "{} {} {} {} {}",
+            colorize(&format!("{BOLD}{GREEN}"), "configured"),
+            colorize(CYAN, project),
+            colorize(YELLOW, version),
+            colorize(BLUE, "in"),
+            colorize(CYAN, path)
+        ),
+        None => format!(
+            "{} {} {} {}",
+            colorize(&format!("{BOLD}{GREEN}"), "configured"),
+            colorize(CYAN, project),
+            colorize(BLUE, "in"),
+            colorize(CYAN, path)
+        ),
+    };
+    line(message);
 }
 
 pub fn item(name: impl Display) {
