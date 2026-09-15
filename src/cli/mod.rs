@@ -30,10 +30,7 @@ pub fn run() -> Result<()> {
     }
     let command = match first.as_deref() {
         Some("--help" | "-h") | None => "help".to_string(),
-        Some(value) => base_rules
-            .command_name(value)
-            .unwrap_or(value)
-            .to_string(),
+        Some(value) => base_rules.command_name(value).unwrap_or(value).to_string(),
     };
     let mut build_dir = PathBuf::from("build");
     let mut build_dir_explicit = false;
@@ -157,6 +154,29 @@ pub fn run() -> Result<()> {
         help::print(&command);
         return Ok(());
     }
+    let command_rule = base_rules
+        .command(&command)
+        .ok_or_else(|| Error::Config(format!("unknown command '{command}'")))?;
+    if base_rules.accepts_files_as_input(&command)
+        && positional
+            .first()
+            .is_some_and(|input| standalone_file(input).is_some())
+    {
+        let root = std::env::current_dir()?;
+        let code = run::execute(
+            positional.first().map(String::as_str),
+            &run_arguments,
+            &root,
+            Path::new("build"),
+            &configuration,
+            jobs,
+        )?;
+        return if code == 0 {
+            Ok(())
+        } else {
+            Err(Error::Exit(code))
+        };
+    }
     if command == "version" {
         output::version("nox", version());
         return Ok(());
@@ -167,14 +187,10 @@ pub fn run() -> Result<()> {
         }
         return Ok(());
     }
-    let command_rule = base_rules
-        .command(&command)
-        .ok_or_else(|| Error::Config(format!("unknown command '{command}'")))?;
     if command_rule.requires_project {
         let root = project_root()?;
         return run_with_project(
             &command,
-            command_rule,
             root,
             build_dir,
             build_dir_explicit,
@@ -185,14 +201,24 @@ pub fn run() -> Result<()> {
             jobs,
             positional,
             run_arguments,
+            base_rules.requires_initialization(&command),
         );
     }
     Err(Error::Config(format!("unknown command '{command}'")))
 }
 
+fn standalone_file(input: &str) -> Option<PathBuf> {
+    let path = PathBuf::from(input);
+    let path = if path.is_absolute() {
+        path
+    } else {
+        std::env::current_dir().ok()?.join(path)
+    };
+    path.is_file().then_some(path)
+}
+
 fn run_with_project(
     command: &str,
-    command_rule: &crate::rules::base::CommandRule,
     root: std::path::PathBuf,
     mut build_dir: PathBuf,
     build_dir_explicit: bool,
@@ -203,6 +229,7 @@ fn run_with_project(
     jobs: usize,
     positional: Vec<String>,
     run_arguments: Vec<String>,
+    requires_initialization: bool,
 ) -> Result<()> {
     if !build_dir_explicit && !matches!(command, "setup" | "configure") {
         if let Some(configured_build_dir) = configured_build_dir(&root)? {
@@ -214,7 +241,7 @@ fn run_with_project(
     } else {
         root.join(build_dir)
     };
-    if command_rule.requires_initialization && !BuildState::path(&state_dir).is_file() {
+    if requires_initialization && !BuildState::path(&state_dir).is_file() {
         return Err(Error::Config(format!(
             "'{}' is not configured; run nox setup {}",
             state_dir.display(),
@@ -667,7 +694,7 @@ fn default_install_prefix() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{bump_version, version_files};
+    use super::{bump_version, standalone_file, version_files};
     use crate::rules::base::BaseRules;
     use std::fs;
 
@@ -678,6 +705,15 @@ mod tests {
         assert_eq!(rules.command_name("build"), Some("build"));
         assert_eq!(rules.command_name("r"), Some("run"));
         assert_eq!(rules.command_name("run"), Some("run"));
+    }
+
+    #[test]
+    fn recognizes_existing_standalone_files() {
+        let path =
+            std::env::temp_dir().join(format!("nox-standalone-run-{}.py", std::process::id()));
+        fs::write(&path, "print('ok')\n").expect("write standalone file");
+        assert_eq!(standalone_file(path.to_str().unwrap()), Some(path.clone()));
+        fs::remove_file(path).expect("remove standalone file");
     }
 
     #[test]

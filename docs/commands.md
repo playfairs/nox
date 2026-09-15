@@ -141,11 +141,13 @@ Executables go to `bin`; libraries go to `lib`.
 
 ## `nox run [PATH|TARGET] [-- ARGS...]`
 
-Run either the current project, a named project target, or one source file. Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically.
+Run either the current project, a named project target, or one source file. An existing source file runs standalone and does not require `nox.build` or `nox setup`; Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically. With no path, `.`, or a target name, Nox runs the initialized project.
 
 ```sh
+nox run
 nox run .
 nox run hello
+nox run main.py
 nox run examples/fsharp/Test.fsx
 nox run examples/c/Test.c -- hello world
 nox run examples/cpp/Test.cpp -- hello world
