@@ -13,7 +13,7 @@
 	(command: "status", aliases: ["stat"], requires_project: true, requires_initialization: false),
 	(command: "targets", aliases: ["list"], requires_project: true, requires_initialization: false),
 	(command: "graph", aliases: [], requires_project: true, requires_initialization: false),
-	(command: "run", aliases: ["r"], requires_project: true, requires_initialization: true),
+	(command: "run", aliases: ["r"], requires_project: false, requires_initialization: true),
 	(command: "test", aliases: [], requires_project: true, requires_initialization: true),
 	(command: "task", aliases: [], requires_project: true, requires_initialization: false),
 	(command: "tasks", aliases: [], requires_project: true, requires_initialization: false),
