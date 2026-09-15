@@ -1,0 +1,11 @@
+[
+	(name: "help", takes_value: false, repeatable: false),
+	(name: "version", takes_value: false, repeatable: false),
+	(name: "jobs", takes_value: true, repeatable: false),
+	(name: "build-dir", takes_value: true, repeatable: false),
+	(name: "compile-flag", takes_value: true, repeatable: true),
+	(name: "prefix", takes_value: true, repeatable: false),
+	(name: "release", takes_value: false, repeatable: false),
+	(name: "debug", takes_value: false, repeatable: false),
+	(name: "reconfigure", takes_value: false, repeatable: false),
+]

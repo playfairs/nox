@@ -2,6 +2,7 @@
     (path: ".git", kind: "directory"),
     (path: "target", kind: "directory"),
     (path: "build", kind: "directory"),
+    (path: "builddir", kind: "directory"),
     (path: "node_modules", kind: "directory"),
     (path: "dist", kind: "directory"),
     (path: ".nox", kind: "directory"),

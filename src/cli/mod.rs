@@ -7,6 +7,7 @@ use crate::core::output;
 use crate::init;
 use crate::project::parser;
 use crate::project_root;
+use crate::rules::base::BaseRules;
 use crate::run;
 use crate::task;
 use crate::toolchain::{detection, rider};
@@ -19,15 +20,8 @@ fn version() -> &'static str {
     include_str!("../../VERSION").trim()
 }
 
-fn resolve_command_alias(name: &str) -> &str {
-    match name {
-        "b" => "build",
-        "r" => "run",
-        _ => name,
-    }
-}
-
 pub fn run() -> Result<()> {
+    let base_rules = BaseRules::load().map_err(Error::Config)?;
     let mut arguments = std::env::args().skip(1);
     let first = arguments.next();
     if matches!(first.as_deref(), Some("--version" | "-V" | "-v")) {
@@ -36,7 +30,10 @@ pub fn run() -> Result<()> {
     }
     let command = match first.as_deref() {
         Some("--help" | "-h") | None => "help".to_string(),
-        Some(value) => resolve_command_alias(value).to_string(),
+        Some(value) => base_rules
+            .command_name(value)
+            .unwrap_or(value)
+            .to_string(),
     };
     let mut build_dir = PathBuf::from("build");
     let mut build_dir_explicit = false;
@@ -160,8 +157,54 @@ pub fn run() -> Result<()> {
         help::print(&command);
         return Ok(());
     }
-    let root = project_root()?;
-    if !build_dir_explicit && !matches!(command.as_str(), "setup" | "configure") {
+    if command == "version" {
+        output::version("nox", version());
+        return Ok(());
+    }
+    if command == "riders" {
+        for rider in rider::available() {
+            output::list_item(rider.name, rider.description);
+        }
+        return Ok(());
+    }
+    let command_rule = base_rules
+        .command(&command)
+        .ok_or_else(|| Error::Config(format!("unknown command '{command}'")))?;
+    if command_rule.requires_project {
+        let root = project_root()?;
+        return run_with_project(
+            &command,
+            command_rule,
+            root,
+            build_dir,
+            build_dir_explicit,
+            configuration,
+            prefix,
+            reconfigure,
+            compile_flags,
+            jobs,
+            positional,
+            run_arguments,
+        );
+    }
+    Err(Error::Config(format!("unknown command '{command}'")))
+}
+
+fn run_with_project(
+    command: &str,
+    command_rule: &crate::rules::base::CommandRule,
+    root: std::path::PathBuf,
+    mut build_dir: PathBuf,
+    build_dir_explicit: bool,
+    configuration: String,
+    prefix: PathBuf,
+    reconfigure: bool,
+    compile_flags: Vec<String>,
+    jobs: usize,
+    positional: Vec<String>,
+    run_arguments: Vec<String>,
+) -> Result<()> {
+    if !build_dir_explicit && !matches!(command, "setup" | "configure") {
         if let Some(configured_build_dir) = configured_build_dir(&root)? {
             build_dir = configured_build_dir;
         }
@@ -171,7 +214,14 @@ pub fn run() -> Result<()> {
     } else {
         root.join(build_dir)
     };
-    match command.as_str() {
+    if command_rule.requires_initialization && !BuildState::path(&state_dir).is_file() {
+        return Err(Error::Config(format!(
+            "'{}' is not configured; run nox setup {}",
+            state_dir.display(),
+            state_dir.display()
+        )));
+    }
+    match command {
         "setup" | "configure" => {
             if reconfigure && state_dir.exists() {
                 fs::remove_dir_all(&state_dir)?;
@@ -224,12 +274,7 @@ pub fn run() -> Result<()> {
             Ok(())
         }
         "status" | "stat" => status(&state_dir),
-        "riders" => {
-            for rider in rider::available() {
-                output::list_item(rider.name, rider.description);
-            }
-            Ok(())
-        }
+        "riders" => unreachable!(),
         "graph" => {
             let project = parser::parse_file(&root.join("nox.build"))?;
             for name in graph::order(&project)? {
@@ -286,10 +331,7 @@ pub fn run() -> Result<()> {
             help::print(positional.first().map(String::as_str).unwrap_or(""));
             Ok(())
         }
-        "version" => {
-            output::version("nox", version());
-            Ok(())
-        }
+        "version" => unreachable!(),
         "bump-version" | "bump" => bump_version(
             &root,
             positional.first().map(String::as_str),
@@ -625,15 +667,17 @@ fn default_install_prefix() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{bump_version, resolve_command_alias, version_files};
+    use super::{bump_version, version_files};
+    use crate::rules::base::BaseRules;
     use std::fs;
 
     #[test]
     fn resolves_short_command_aliases() {
-        assert_eq!(resolve_command_alias("b"), "build");
-        assert_eq!(resolve_command_alias("build"), "build");
-        assert_eq!(resolve_command_alias("r"), "run");
-        assert_eq!(resolve_command_alias("run"), "run");
+        let rules = BaseRules::load().expect("embedded base rules should load");
+        assert_eq!(rules.command_name("b"), Some("build"));
+        assert_eq!(rules.command_name("build"), Some("build"));
+        assert_eq!(rules.command_name("r"), Some("run"));
+        assert_eq!(rules.command_name("run"), Some("run"));
     }
 
     #[test]
