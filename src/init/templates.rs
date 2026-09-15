@@ -99,7 +99,7 @@ pub fn readme(name: &str, nix: bool) -> String {
         ""
     };
     format!(
-        "# {name}\n\nA project built with Nox.\n\n## Build\n\n```sh\nnox setup\nnox build\n```\n{nix_line}"
+        "# {name}\n\nA project built and automated with Nox.\n\n## Build\n\n```sh\nnox setup\nnox build\n```\n{nix_line}"
     )
 }
 pub fn gitignore(language: Language) -> &'static str {

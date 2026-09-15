@@ -1,6 +1,6 @@
 project "nox" {
     version = file("./VERSION")
-    description = "The Nox Build System."
+    description = "The Nox Build & Automation System."
     license = file("./LICENSE")
     edition = "1"
     dependencies = []

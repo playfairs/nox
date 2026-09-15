@@ -76,7 +76,7 @@ pub fn render(
         }
     }
     format!(
-        "project \"{name}\" {{\n    description = \"A project built with Nox.\"\n\n    {target} \"{name}\" {{\n{}\n    }}\n}}\n",
+        "project \"{name}\" {{\n    description = \"A project built and automated with Nox.\"\n\n    {target} \"{name}\" {{\n{}\n    }}\n}}\n",
         properties.join("\n")
     )
 }

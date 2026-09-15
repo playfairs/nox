@@ -1,6 +1,6 @@
 # Nox Documentation
 
-Nox is a Rust build system and task runner. This documentation describes the behavior implemented by the current binary, including the project file syntax, command workflow, build graph, toolchain selection, incremental compilation, installation, and extension points.
+Nox is a cross-platform build system, task runner, and project runtime written in Rust. This documentation describes the behavior implemented by the current binary, including the project file syntax, command workflow, build graph, toolchain selection, incremental compilation, installation, and extension points.
 
 ## Guides
 

@@ -1,5 +1,5 @@
 {
-  description = "The Nox Build System";
+  description = "The Nox Build & Automation System";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";

@@ -10,9 +10,9 @@
       <img src="https://raw.githubusercontent.com/playfairs/nox/master/assets/title.svg" alt="Nox">
    </p>
    
-   <h2 align="center">The Nox Build System</h2>
+   <h2 align="center">The Nox Build & Automation System</h2>
 
-Nox is a cross-platform build system and task runner written in Rust. Its core
+Nox is a cross-platform build system, task runner, and project runtime written in Rust. Its core
 models projects, targets, dependencies, toolchains, Riders, and structured
 build actions independently of any one language.
 

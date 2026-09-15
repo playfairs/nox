@@ -102,7 +102,7 @@ pub fn help(message: &str) {
     for value in message.lines() {
         if value.is_empty() {
             line(String::new());
-        } else if value == "The Nox Build System" {
+        } else if value == "The Nox Build & Automation System" {
             line(hyperlink("https://github.com/playfairs/nox", value));
         } else if value == "Commands:" || value == "Options:" {
             line(colorize(&format!("{BOLD}{CYAN}"), value));

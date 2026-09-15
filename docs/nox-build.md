@@ -8,7 +8,7 @@ The file contains one project declaration:
 
 ```text
 project "nox" {
-    description = "The Nox Build System."
+    description = "The Nox Build & Automation System."
 
     rust_executable "nox" {
         sources = ["src/main.rs"]
