@@ -7,6 +7,7 @@ pub enum Error {
     UnsupportedLanguage(String),
     Configuration(String),
     Generation(String),
+    Rules(String),
 }
 
 impl Display for Error {
@@ -21,6 +22,7 @@ impl Display for Error {
             }
             Self::Configuration(message) => write!(formatter, "configuration error: {message}"),
             Self::Generation(message) => write!(formatter, "build generation failed: {message}"),
+            Self::Rules(message) => write!(formatter, "invalid initialization rules: {message}"),
         }
     }
 }

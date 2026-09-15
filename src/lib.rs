@@ -3,6 +3,7 @@ pub mod cli;
 pub mod core;
 pub mod init;
 pub mod project;
+pub mod rules;
 pub mod run;
 pub mod task;
 pub mod toolchain;

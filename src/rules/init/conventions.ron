@@ -1,0 +1,7 @@
+[
+    (name: "test_directories", values: ["test", "tests", "spec", "__tests__"], priority: 100, role: "directory"),
+    (name: "main_files", values: ["main", "Main", "index", "Program", "__main__"], priority: 100, role: "stem"),
+    (name: "source_directories", values: ["src", "source", "app", "lib"], priority: 100, role: "directory"),
+    (name: "include_directories", values: ["include", "includes", "inc", "headers", "public"], priority: 100, role: "directory"),
+    (name: "example_directories", values: ["example", "examples"], priority: 80, role: "directory"),
+]

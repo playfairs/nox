@@ -9,7 +9,6 @@ pub mod project;
 pub mod scanner;
 pub mod templates;
 
-use config::ScanConfig;
 use error::{Error, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,6 +16,7 @@ use std::path::{Path, PathBuf};
 pub use config::Options;
 pub use language::{Language, ProjectType};
 pub use project::ProjectInfo;
+use crate::rules::init::InitRules;
 
 pub fn resolve_root(name: Option<&str>) -> Result<PathBuf> {
     let current = std::env::current_dir()?;
@@ -40,10 +40,11 @@ pub fn run(root: &Path, options: Options) -> Result<()> {
         )));
     }
     crate::core::output::action("analyzing", root.display());
-    let mut project = scanner::scan(root, &ScanConfig::default())?;
-    detect::infer_type(&mut project);
+    let rules = InitRules::load().map_err(Error::Rules)?;
+    let mut project = scanner::scan(root, &rules)?;
+    detect::infer_type(&mut project, &rules);
     report(&project);
-    let language = detect::language(&project, options.language.as_deref())?;
+    let language = detect::language(&project, &rules, options.language.as_deref())?;
     let project_type = detect::project_type(&project, options.project_type.as_deref())?;
     let name = options
         .name
@@ -56,7 +57,7 @@ pub fn run(root: &Path, options: Options) -> Result<()> {
                 .map(str::to_string)
         })
         .ok_or_else(|| Error::Configuration("could not infer a project name; use --name".into()))?;
-    new::create_files(root, &project, language, project_type, &options, &name)?;
+    new::create_files(root, &project, &rules, language, project_type, &options, &name)?;
     crate::core::output::success(format!("Nox project '{name}' initialized successfully"));
     Ok(())
 }
@@ -108,9 +109,10 @@ mod tests {
         fs::write(root.join("src/main.cpp"), "").unwrap();
         fs::write(root.join("tests/test_main.cpp"), "").unwrap();
 
-        let project = scanner::scan(&root, &ScanConfig::default()).unwrap();
+        let rules = InitRules::load().unwrap();
+        let project = scanner::scan(&root, &rules).unwrap();
         assert_eq!(
-            scanner::source_files(&project, Language::Cpp),
+            scanner::source_files(&project, Language::Cpp, &rules),
             [
                 std::path::PathBuf::from("src/main.cpp"),
                 std::path::PathBuf::from("src/nested/util.cpp"),
@@ -141,6 +143,33 @@ mod tests {
         .unwrap();
         let build = fs::read_to_string(root.join("nox.build")).unwrap();
         assert!(build.contains("\"src/main.rs\""));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn initialization_rules_are_loaded_and_drive_aliases_and_ignores() {
+        let rules = InitRules::load().expect("embedded init rules should load");
+        assert_eq!(Language::parse_with_rules("cpp", &rules), Some(Language::Cpp));
+        assert!(rules.ignores.iter().any(|rule| rule.path == ".cache"));
+        assert_eq!(rules.target(Language::Cpp, ProjectType::Executable).unwrap().target, "cxx_executable");
+    }
+
+    #[test]
+    fn generated_cpp_properties_follow_rule_order() {
+        let root = temporary_root("rules");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("src/nested")).unwrap();
+        fs::create_dir_all(root.join("include")).unwrap();
+        fs::write(root.join("src/main.cpp"), "").unwrap();
+        fs::write(root.join("src/nested/util.cpp"), "").unwrap();
+        fs::write(root.join("include/util.hpp"), "").unwrap();
+        let rules = InitRules::load().unwrap();
+        let project = scanner::scan(&root, &rules).unwrap();
+        let generated = buildgen::render(&project, &rules, Language::Cpp, ProjectType::Executable, "fixture");
+        assert!(generated.contains("\"src/main.cpp\",\n        \"src/nested/util.cpp\""));
+        assert!(generated.find("sources =").unwrap() < generated.find("include_dirs =").unwrap());
+        assert!(generated.find("include_dirs =").unwrap() < generated.find("flags =").unwrap());
+        assert!(generated.contains("\"-std=c++20\""));
         fs::remove_dir_all(root).unwrap();
     }
 }

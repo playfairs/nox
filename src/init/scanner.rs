@@ -1,11 +1,11 @@
-use super::config::ScanConfig;
 use super::error::Result;
-use super::language::{Language, is_test_path};
+use super::language::{is_test_path_with_rules, Language};
 use super::project::ProjectInfo;
+use crate::rules::init::InitRules;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn scan(root: &Path, config: &ScanConfig) -> Result<ProjectInfo> {
+pub fn scan(root: &Path, rules: &InitRules) -> Result<ProjectInfo> {
     let mut project = ProjectInfo {
         root: root.to_path_buf(),
         has_flake: root.join("flake.nix").is_file(),
@@ -16,7 +16,7 @@ pub fn scan(root: &Path, config: &ScanConfig) -> Result<ProjectInfo> {
         has_readme: root.join("README").exists() || root.join("README.md").exists(),
         ..ProjectInfo::default()
     };
-    visit(root, root, config, &mut project)?;
+    visit(root, root, rules, &mut project)?;
     if project.languages.contains(&Language::JavaScript)
         && project.existing_files.contains(Path::new("tsconfig.json"))
     {
@@ -33,7 +33,7 @@ pub fn scan(root: &Path, config: &ScanConfig) -> Result<ProjectInfo> {
 fn visit(
     root: &Path,
     directory: &Path,
-    config: &ScanConfig,
+    rules: &InitRules,
     project: &mut ProjectInfo,
 ) -> Result<()> {
     let mut entries = fs::read_dir(directory)?.collect::<std::result::Result<Vec<_>, _>>()?;
@@ -43,20 +43,28 @@ fn visit(
         let relative = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
         if path.is_dir() {
             if relative.components().any(|component| {
-                config
-                    .ignored_directories
-                    .contains(component.as_os_str().to_str().unwrap_or_default())
+                rules.ignores.iter().any(|rule| rule.kind == "directory" && component.as_os_str() == std::ffi::OsStr::new(&rule.path))
             }) {
                 continue;
             }
             if relative
                 .file_name()
                 .and_then(|name| name.to_str())
-                .is_some_and(|name| matches!(name, "test" | "tests" | "spec" | "__tests__"))
+                .is_some_and(|name| rules.conventions.iter().any(|rule| rule.name == "test_directories" && rule.values.iter().any(|value| value == name)))
             {
                 project.test_directories.insert(relative.clone());
             }
-            visit(root, &path, config, project)?;
+            if rules.layouts.iter().any(|rule| {
+                rule.role == "source"
+                    && rule.directory
+                        == relative
+                            .file_name()
+                            .and_then(|value| value.to_str())
+                            .unwrap_or_default()
+            }) {
+                project.source_directories.insert(relative.clone());
+            }
+            visit(root, &path, rules, project)?;
             continue;
         }
         project.existing_files.insert(relative.clone());
@@ -64,49 +72,23 @@ fn visit(
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or_default();
-        match name {
-            "Cargo.toml" => {
-                project.languages.insert(Language::Rust);
-                project.package_manifests.push(relative.clone());
-                project.build_systems.push("Cargo".into());
-                project.name = project.name.take().or_else(|| read_value(&path, "name"));
-            }
-            "Package.swift" => {
-                project.languages.insert(Language::Swift);
-                project.package_manifests.push(relative.clone());
-                project.build_systems.push("SwiftPM".into());
-            }
-            "package.json" => {
-                project.languages.insert(Language::JavaScript);
-                project.package_manifests.push(relative.clone());
-                project.build_systems.push("npm".into());
-                project.name = project.name.take().or_else(|| read_json_name(&path));
-            }
-            "pyproject.toml" => {
-                project.languages.insert(Language::Python);
-                project.package_manifests.push(relative.clone());
-                project.build_systems.push("pyproject".into());
-            }
-            "tsconfig.json" => {
-                project.languages.insert(Language::TypeScript);
-                project.package_manifests.push(relative.clone());
-            }
-            "CMakeLists.txt" => project.build_systems.push("CMake".into()),
-            "meson.build" => project.build_systems.push("Meson".into()),
-            "Makefile" => project.build_systems.push("Make".into()),
-            "flake.nix" => project.has_flake = true,
-            "rustfmt.toml" | ".clang-format" | ".prettierrc" | ".prettierrc.json"
-            | ".swift-format" => project.formatter_configs.push(relative.clone()),
-            _ => {}
+        if let Some(rule) = rules.files.iter().find(|rule| rule.name == name) {
+            for language in &rule.languages { project.languages.insert(*language); }
+            if rule.build_system.as_deref() == Some("Nix") { project.has_flake = true; }
+            if !rule.languages.is_empty() && rule.build_system.is_some() { project.package_manifests.push(relative.clone()); }
+            if let Some(build_system) = &rule.build_system { project.build_systems.push(build_system.clone()); }
+            if rule.project_name.as_deref() == Some("toml_name") { project.name = project.name.take().or_else(|| read_value(&path, "name")); }
+            if rule.project_name.as_deref() == Some("json_name") { project.name = project.name.take().or_else(|| read_json_name(&path)); }
+            if rule.build_system.is_none() { project.formatter_configs.push(relative.clone()); }
         }
-        if let Some(language) = Language::from_path(&path) {
+        if let Some(language) = Language::from_path(&path, rules) {
             project.languages.insert(language);
             project.source_files.push(relative.clone());
             if let Some(parent) = relative.parent() {
                 project.source_directories.insert(parent.to_path_buf());
             }
         }
-        if Language::is_header(&path) {
+        if Language::is_header(&path, rules) {
             project.header_files.push(relative);
         }
     }
@@ -127,11 +109,11 @@ fn read_json_name(path: &Path) -> Option<String> {
             .map(|(_, value)| value.trim().trim_matches(',').trim_matches('"').to_string())
     })
 }
-pub fn source_files(project: &ProjectInfo, language: Language) -> Vec<PathBuf> {
+pub fn source_files(project: &ProjectInfo, language: Language, rules: &InitRules) -> Vec<PathBuf> {
     project
         .source_files
         .iter()
-        .filter(|path| Language::from_path(path) == Some(language) && !is_test_path(path))
+        .filter(|path| Language::from_path(path, rules) == Some(language) && !is_test_path_with_rules(path, rules))
         .cloned()
         .collect()
 }

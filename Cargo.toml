@@ -13,3 +13,4 @@ strip = true
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
+ron = "0.8"

@@ -1,16 +1,23 @@
 use super::project::ProjectInfo;
+use crate::rules::init::InitRules;
 use std::path::{Path, PathBuf};
-pub fn include_directories(root: &Path, project: &ProjectInfo) -> Vec<PathBuf> {
+pub fn include_directories(root: &Path, project: &ProjectInfo, rules: &InitRules) -> Vec<PathBuf> {
+    let include_names = rules
+        .layouts
+        .iter()
+        .filter(|rule| rule.role == "include")
+        .map(|rule| rule.directory.as_str())
+        .collect::<Vec<_>>();
     let mut directories = project
         .header_files
         .iter()
         .map(|path| {
             let components = path.components().collect::<Vec<_>>();
             if let Some(index) = components.iter().position(|component| {
-                matches!(
-                    component.as_os_str().to_str(),
-                    Some("include" | "includes" | "inc" | "headers" | "public")
-                )
+                component
+                    .as_os_str()
+                    .to_str()
+                    .is_some_and(|value| include_names.contains(&value))
             }) {
                 components[..=index]
                     .iter()

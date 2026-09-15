@@ -4,12 +4,14 @@ use super::error::Result;
 use super::language::{Language, ProjectType};
 use super::project::ProjectInfo;
 use super::templates;
+use crate::rules::init::InitRules;
 use std::fs;
 use std::path::Path;
 
 pub fn create_files(
     root: &Path,
     project: &ProjectInfo,
+    rules: &InitRules,
     language: Language,
     project_type: ProjectType,
     options: &Options,
@@ -18,12 +20,12 @@ pub fn create_files(
     if project
         .source_files
         .iter()
-        .all(|path| super::language::is_test_path(path))
+        .all(|path| super::language::is_test_path_with_rules(path, rules))
     {
         let (path, contents) = templates::starter(language, project_type);
         write_if_absent(&root.join(path), contents)?;
     }
-    if language == Language::Rust && !root.join("Cargo.toml").exists() {
+    if rules.template("rust_manifest", language).is_some() && language == Language::Rust && !root.join("Cargo.toml").exists() {
         let kind = if project_type == ProjectType::Library {
             "[lib]\npath = \"src/lib.rs\"\n"
         } else {
@@ -36,7 +38,8 @@ pub fn create_files(
             ),
         )?;
     }
-    if matches!(language, Language::JavaScript | Language::TypeScript)
+    if rules.template("javascript_manifest", language).is_some()
+        && matches!(language, Language::JavaScript | Language::TypeScript)
         && !root.join("package.json").exists()
     {
         write_if_absent(
@@ -46,19 +49,19 @@ pub fn create_files(
             ),
         )?;
     }
-    if language == Language::TypeScript && !root.join("tsconfig.json").exists() {
+    if rules.template("typescript_config", language).is_some() && language == Language::TypeScript && !root.join("tsconfig.json").exists() {
         write_if_absent(
             &root.join("tsconfig.json"),
             "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"commonjs\",\n    \"outDir\": \"dist\",\n    \"strict\": true\n  },\n  \"include\": [\"src\"]\n}\n",
         )?;
     }
-    if language == Language::Swift && !root.join("Package.swift").exists() {
+    if rules.template("swift_manifest", language).is_some() && language == Language::Swift && !root.join("Package.swift").exists() {
         write_if_absent(
             &root.join("Package.swift"),
             &templates::swift_manifest(name, project_type),
         )?;
     }
-    if language == Language::Python && !root.join("pyproject.toml").exists() {
+    if rules.template("python_manifest", language).is_some() && language == Language::Python && !root.join("pyproject.toml").exists() {
         write_if_absent(
             &root.join("pyproject.toml"),
             &format!(
@@ -68,12 +71,12 @@ pub fn create_files(
     }
     write_if_absent(
         &root.join("nox.build"),
-        &buildgen::render(project, language, project_type, name),
+        &buildgen::render(project, rules, language, project_type, name),
     )?;
-    if options.noxfile && !project.has_noxfile {
+    if options.noxfile && rules.template("noxfile", language).is_some() && !project.has_noxfile {
         write_if_absent(&root.join("noxfile"), &templates::noxfile(language))?;
     }
-    if options.nix && !project.has_flake {
+    if options.nix && rules.template("flake", language).is_some() && !project.has_flake {
         write_if_absent(
             &root.join("flake.nix"),
             &templates::flake(language, options.formatter),
@@ -91,13 +94,13 @@ pub fn create_files(
             &templates::nix_formatter(language),
         )?;
     }
-    if !project.has_readme {
+    if rules.template("readme", language).is_some() && !project.has_readme {
         write_if_absent(
             &root.join("README.md"),
             &templates::readme(name, options.nix),
         )?;
     }
-    if !root.join(".gitignore").exists() {
+    if rules.template("gitignore", language).is_some() && !root.join(".gitignore").exists() {
         write_if_absent(&root.join(".gitignore"), templates::gitignore(language))?;
     }
     Ok(())

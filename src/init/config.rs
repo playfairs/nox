@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 #[derive(Clone, Debug)]
 pub struct Options {
     pub project_name: Option<String>,
@@ -22,20 +20,6 @@ impl Default for Options {
             nix: true,
             formatter: false,
             noxfile: true,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ScanConfig {
-    pub ignored_directories: BTreeSet<&'static str>,
-}
-impl Default for ScanConfig {
-    fn default() -> Self {
-        Self {
-            ignored_directories: [".git", "target", "build", "node_modules", "dist", ".nox"]
-                .into_iter()
-                .collect(),
         }
     }
 }
