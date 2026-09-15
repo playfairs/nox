@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
                 "let" => self.binding()?,
                 "version" => {
                     self.expect_symbol('=')?;
-                    version = Some(self.string_or_file()?);
+                    version = Some(self.string_or_file("version")?);
                 }
                 "version_files" => {
                     self.expect_symbol('=')?;
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
                 }
                 "license" => {
                     self.expect_symbol('=')?;
-                    license = self.string_or_word()?;
+                    license = self.string_or_file("license")?;
                 }
                 "edition" => {
                     self.expect_symbol('=')?;
@@ -452,7 +452,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn string_or_file(&mut self) -> Result<String> {
+    fn string_or_file(&mut self, field: &str) -> Result<String> {
         if self.take_word("file") {
             self.expect_symbol('(')?;
             let relative = self.string_or_word()?;
@@ -460,16 +460,19 @@ impl<'a> Parser<'a> {
             let path = self.root.join(&relative);
             let value = fs::read_to_string(&path).map_err(|error| {
                 Error::Config(format!(
-                    "could not read version file '{}': {error}",
+                    "could not read {field} file '{}': {error}",
                     path.display()
                 ))
             })?;
             let value = value.trim();
             if value.is_empty() {
                 return Err(Error::Config(format!(
-                    "version file '{}' is empty",
+                    "{field} file '{}' is empty",
                     path.display()
                 )));
+            }
+            if field == "license" {
+                return crate::project::license::identify_file(&path).map_err(Error::Config);
             }
             return Ok(value.to_string());
         }

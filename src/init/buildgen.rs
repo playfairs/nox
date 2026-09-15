@@ -69,7 +69,9 @@ pub fn render(
             "sources" => properties.push(sources_block.clone()),
             "include_dirs" if !include_block.is_empty() => properties.push(include_block.clone()),
             "flags" if !flags.is_empty() => properties.push(flags.clone()),
-            "install" if property.automatic => properties.push("        install = true".to_string()),
+            "install" if property.automatic => {
+                properties.push("        install = true".to_string())
+            }
             _ => {}
         }
     }

@@ -25,7 +25,10 @@ pub fn create_files(
         let (path, contents) = templates::starter(language, project_type);
         write_if_absent(&root.join(path), contents)?;
     }
-    if rules.template("rust_manifest", language).is_some() && language == Language::Rust && !root.join("Cargo.toml").exists() {
+    if rules.template("rust_manifest", language).is_some()
+        && language == Language::Rust
+        && !root.join("Cargo.toml").exists()
+    {
         let kind = if project_type == ProjectType::Library {
             "[lib]\npath = \"src/lib.rs\"\n"
         } else {
@@ -49,19 +52,28 @@ pub fn create_files(
             ),
         )?;
     }
-    if rules.template("typescript_config", language).is_some() && language == Language::TypeScript && !root.join("tsconfig.json").exists() {
+    if rules.template("typescript_config", language).is_some()
+        && language == Language::TypeScript
+        && !root.join("tsconfig.json").exists()
+    {
         write_if_absent(
             &root.join("tsconfig.json"),
             "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"commonjs\",\n    \"outDir\": \"dist\",\n    \"strict\": true\n  },\n  \"include\": [\"src\"]\n}\n",
         )?;
     }
-    if rules.template("swift_manifest", language).is_some() && language == Language::Swift && !root.join("Package.swift").exists() {
+    if rules.template("swift_manifest", language).is_some()
+        && language == Language::Swift
+        && !root.join("Package.swift").exists()
+    {
         write_if_absent(
             &root.join("Package.swift"),
             &templates::swift_manifest(name, project_type),
         )?;
     }
-    if rules.template("python_manifest", language).is_some() && language == Language::Python && !root.join("pyproject.toml").exists() {
+    if rules.template("python_manifest", language).is_some()
+        && language == Language::Python
+        && !root.join("pyproject.toml").exists()
+    {
         write_if_absent(
             &root.join("pyproject.toml"),
             &format!(

@@ -3,7 +3,11 @@ use super::language::{Language, ProjectType};
 use super::project::ProjectInfo;
 use crate::rules::init::InitRules;
 use std::io::{self, IsTerminal, Write};
-pub fn language(project: &ProjectInfo, rules: &InitRules, requested: Option<&str>) -> Result<Language> {
+pub fn language(
+    project: &ProjectInfo,
+    rules: &InitRules,
+    requested: Option<&str>,
+) -> Result<Language> {
     if let Some(value) = requested {
         return Language::parse_with_rules(value, rules)
             .ok_or_else(|| Error::UnsupportedLanguage(value.to_string()));
@@ -40,9 +44,15 @@ pub fn project_type(project: &ProjectInfo, requested: Option<&str>) -> Result<Pr
 pub fn infer_type(project: &mut ProjectInfo, rules: &InitRules) {
     if project.project_type.is_none()
         && project.source_files.iter().any(|path| {
-            let Some(language) = super::language::Language::from_path(path, rules) else { return false; };
-            let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else { return false; };
-            rules.language(language).is_some_and(|rule| rule.main_files.iter().any(|name| name == file_name))
+            let Some(language) = super::language::Language::from_path(path, rules) else {
+                return false;
+            };
+            let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+                return false;
+            };
+            rules
+                .language(language)
+                .is_some_and(|rule| rule.main_files.iter().any(|name| name == file_name))
         })
     {
         project.project_type = Some(ProjectType::Executable);

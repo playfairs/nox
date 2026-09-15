@@ -1,7 +1,7 @@
 project "nox" {
     version = file("./VERSION")
     description = "The Nox Build System."
-    license = "Unlicense"
+    license = file("./LICENSE")
     edition = "1"
     dependencies = []
     version_files = ["Cargo.toml", "VERSION"]

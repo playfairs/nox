@@ -128,24 +128,49 @@ impl InitRules {
     }
 
     fn validate(&self) -> Result<(), String> {
-        if self.languages.is_empty() { return Err("init languages cannot be empty".into()); }
-        let languages = self.languages.iter().map(|rule| rule.language).collect::<BTreeSet<_>>();
+        if self.languages.is_empty() {
+            return Err("init languages cannot be empty".into());
+        }
+        let languages = self
+            .languages
+            .iter()
+            .map(|rule| rule.language)
+            .collect::<BTreeSet<_>>();
         for rule in &self.targets {
-            if !languages.contains(&rule.language) { return Err(format!("target rule references unknown language {:?}", rule.language)); }
+            if !languages.contains(&rule.language) {
+                return Err(format!(
+                    "target rule references unknown language {:?}",
+                    rule.language
+                ));
+            }
         }
         for rule in &self.flags {
-            if rule.values.is_empty() { return Err(format!("flag rule '{}' has no values", rule.name)); }
+            if rule.values.is_empty() {
+                return Err(format!("flag rule '{}' has no values", rule.name));
+            }
         }
-        if self.properties.windows(2).any(|rules| rules[0].order >= rules[1].order) {
+        if self
+            .properties
+            .windows(2)
+            .any(|rules| rules[0].order >= rules[1].order)
+        {
             return Err("init properties must be ordered by increasing order".into());
         }
         Ok(())
     }
 
-    pub fn language(&self, language: Language) -> Option<&LanguageRule> { self.languages.iter().find(|rule| rule.language == language) }
-    pub fn target(&self, language: Language, project_type: ProjectType) -> Option<&TargetRule> { self.targets.iter().find(|rule| rule.language == language && rule.project_type == project_type) }
+    pub fn language(&self, language: Language) -> Option<&LanguageRule> {
+        self.languages.iter().find(|rule| rule.language == language)
+    }
+    pub fn target(&self, language: Language, project_type: ProjectType) -> Option<&TargetRule> {
+        self.targets
+            .iter()
+            .find(|rule| rule.language == language && rule.project_type == project_type)
+    }
     pub fn template(&self, name: &str, language: Language) -> Option<&TemplateRule> {
-        self.templates.iter().find(|rule| rule.name == name && (rule.languages.is_empty() || rule.languages.contains(&language)))
+        self.templates.iter().find(|rule| {
+            rule.name == name && (rule.languages.is_empty() || rule.languages.contains(&language))
+        })
     }
 }
 

@@ -83,11 +83,22 @@ The value is a string and may contain spaces. It does not affect compilation, li
 
 ### `license = LICENSE`
 
-Optional SPDX-style project license identifier:
+Optional SPDX-style project license identifier. It may be written directly:
 
 ```text
 license = "Unlicense"
 ```
+
+Or detected from a local license file using SPDX license-text matching:
+
+```text
+license = file("./LICENSE")
+```
+
+`file(...)` accepts any path, including conventional names such as `LICENSE`,
+`LICENCE`, and `COPYING`. Nox reads the file, recognizes its license text, and
+stores the normalized SPDX identifier. Unrecognized text is rejected rather
+than being treated as a valid license.
 
 The value is project metadata and is displayed by `nox status`.
 

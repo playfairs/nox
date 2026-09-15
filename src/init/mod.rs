@@ -13,10 +13,10 @@ use error::{Error, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::rules::init::InitRules;
 pub use config::Options;
 pub use language::{Language, ProjectType};
 pub use project::ProjectInfo;
-use crate::rules::init::InitRules;
 
 pub fn resolve_root(name: Option<&str>) -> Result<PathBuf> {
     let current = std::env::current_dir()?;
@@ -57,7 +57,15 @@ pub fn run(root: &Path, options: Options) -> Result<()> {
                 .map(str::to_string)
         })
         .ok_or_else(|| Error::Configuration("could not infer a project name; use --name".into()))?;
-    new::create_files(root, &project, &rules, language, project_type, &options, &name)?;
+    new::create_files(
+        root,
+        &project,
+        &rules,
+        language,
+        project_type,
+        &options,
+        &name,
+    )?;
     crate::core::output::success(format!("Nox project '{name}' initialized successfully"));
     Ok(())
 }
@@ -149,9 +157,18 @@ mod tests {
     #[test]
     fn initialization_rules_are_loaded_and_drive_aliases_and_ignores() {
         let rules = InitRules::load().expect("embedded init rules should load");
-        assert_eq!(Language::parse_with_rules("cpp", &rules), Some(Language::Cpp));
+        assert_eq!(
+            Language::parse_with_rules("cpp", &rules),
+            Some(Language::Cpp)
+        );
         assert!(rules.ignores.iter().any(|rule| rule.path == ".cache"));
-        assert_eq!(rules.target(Language::Cpp, ProjectType::Executable).unwrap().target, "cxx_executable");
+        assert_eq!(
+            rules
+                .target(Language::Cpp, ProjectType::Executable)
+                .unwrap()
+                .target,
+            "cxx_executable"
+        );
     }
 
     #[test]
@@ -165,7 +182,13 @@ mod tests {
         fs::write(root.join("include/util.hpp"), "").unwrap();
         let rules = InitRules::load().unwrap();
         let project = scanner::scan(&root, &rules).unwrap();
-        let generated = buildgen::render(&project, &rules, Language::Cpp, ProjectType::Executable, "fixture");
+        let generated = buildgen::render(
+            &project,
+            &rules,
+            Language::Cpp,
+            ProjectType::Executable,
+            "fixture",
+        );
         assert!(generated.contains("\"src/main.cpp\",\n        \"src/nested/util.cpp\""));
         assert!(generated.find("sources =").unwrap() < generated.find("include_dirs =").unwrap());
         assert!(generated.find("include_dirs =").unwrap() < generated.find("flags =").unwrap());

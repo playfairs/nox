@@ -1,5 +1,5 @@
 use super::error::Result;
-use super::language::{is_test_path_with_rules, Language};
+use super::language::{Language, is_test_path_with_rules};
 use super::project::ProjectInfo;
 use crate::rules::init::InitRules;
 use std::fs;
@@ -43,14 +43,22 @@ fn visit(
         let relative = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
         if path.is_dir() {
             if relative.components().any(|component| {
-                rules.ignores.iter().any(|rule| rule.kind == "directory" && component.as_os_str() == std::ffi::OsStr::new(&rule.path))
+                rules.ignores.iter().any(|rule| {
+                    rule.kind == "directory"
+                        && component.as_os_str() == std::ffi::OsStr::new(&rule.path)
+                })
             }) {
                 continue;
             }
             if relative
                 .file_name()
                 .and_then(|name| name.to_str())
-                .is_some_and(|name| rules.conventions.iter().any(|rule| rule.name == "test_directories" && rule.values.iter().any(|value| value == name)))
+                .is_some_and(|name| {
+                    rules.conventions.iter().any(|rule| {
+                        rule.name == "test_directories"
+                            && rule.values.iter().any(|value| value == name)
+                    })
+                })
             {
                 project.test_directories.insert(relative.clone());
             }
@@ -73,13 +81,27 @@ fn visit(
             .and_then(|name| name.to_str())
             .unwrap_or_default();
         if let Some(rule) = rules.files.iter().find(|rule| rule.name == name) {
-            for language in &rule.languages { project.languages.insert(*language); }
-            if rule.build_system.as_deref() == Some("Nix") { project.has_flake = true; }
-            if !rule.languages.is_empty() && rule.build_system.is_some() { project.package_manifests.push(relative.clone()); }
-            if let Some(build_system) = &rule.build_system { project.build_systems.push(build_system.clone()); }
-            if rule.project_name.as_deref() == Some("toml_name") { project.name = project.name.take().or_else(|| read_value(&path, "name")); }
-            if rule.project_name.as_deref() == Some("json_name") { project.name = project.name.take().or_else(|| read_json_name(&path)); }
-            if rule.build_system.is_none() { project.formatter_configs.push(relative.clone()); }
+            for language in &rule.languages {
+                project.languages.insert(*language);
+            }
+            if rule.build_system.as_deref() == Some("Nix") {
+                project.has_flake = true;
+            }
+            if !rule.languages.is_empty() && rule.build_system.is_some() {
+                project.package_manifests.push(relative.clone());
+            }
+            if let Some(build_system) = &rule.build_system {
+                project.build_systems.push(build_system.clone());
+            }
+            if rule.project_name.as_deref() == Some("toml_name") {
+                project.name = project.name.take().or_else(|| read_value(&path, "name"));
+            }
+            if rule.project_name.as_deref() == Some("json_name") {
+                project.name = project.name.take().or_else(|| read_json_name(&path));
+            }
+            if rule.build_system.is_none() {
+                project.formatter_configs.push(relative.clone());
+            }
         }
         if let Some(language) = Language::from_path(&path, rules) {
             project.languages.insert(language);
@@ -113,7 +135,10 @@ pub fn source_files(project: &ProjectInfo, language: Language, rules: &InitRules
     project
         .source_files
         .iter()
-        .filter(|path| Language::from_path(path, rules) == Some(language) && !is_test_path_with_rules(path, rules))
+        .filter(|path| {
+            Language::from_path(path, rules) == Some(language)
+                && !is_test_path_with_rules(path, rules)
+        })
         .cloned()
         .collect()
 }
