@@ -1,191 +1,182 @@
 ruleset "commands" {
     command: help {
+        aliases: []
         description: ["Display help information."]
-        aliases: []
         rules: {
-            requires_project: false,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
         }
     },
-
     command: version {
+        aliases: []
         description: ["Display the current version."]
-        aliases: []
         rules: {
-            requires_project: false,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
         }
     },
-
     command: riders {
+        aliases: []
         description: ["Display available riders."]
-        aliases: []
         rules: {
-            requires_project: false,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
         }
     },
-
     command: init {
+        aliases: []
         description: ["Initialize a new project."]
-        aliases: []
         rules: {
-            requires_project: false,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
         }
     },
-
     command: setup {
-        description: ["Configure the current project."]
         aliases: ["configure"]
+        description: ["Configure the current project."]
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: build {
-        description: ["Build the current project."]
         aliases: ["compile", "b"]
+        description: ["Build the current project."]
         rules: {
-            requires_project: true,
-            requires_initialization: true,
             accepts_files_as_input: false
+            requires_initialization: true
+            requires_project: true
         }
     },
-
     command: rebuild {
+        aliases: []
         description: ["Clean and rebuild the current project."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: clean {
+        aliases: []
         description: ["Clean project build artifacts."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: install {
+        aliases: []
         description: ["Install the current project."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: uninstall {
+        aliases: []
         description: ["Uninstall the current project."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: validate {
+        aliases: []
         description: ["Validate the current project."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: status {
-        description: ["Display the current project status."]
         aliases: ["stat"]
+        description: ["Display the current project status."]
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: targets {
-        description: ["List available project targets."]
         aliases: ["list"]
+        description: ["List available project targets."]
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: graph {
+        aliases: []
         description: ["Display the project dependency graph."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: run {
-        description: ["Run the current project, a named executable target, or a source file."]
         aliases: ["r"]
+        description: ["Run the current project, a named executable target, or a source file."]
         rules: {
-            requires_project: true,
-            requires_initialization: true,
             accepts_files_as_input: true
+            requires_initialization: true
+            requires_project: true
         }
     },
-
+    command: nomlfmt {
+        aliases: []
+        description: ["Format one NOML file or every NOML file in a directory."]
+        rules: {
+            accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
+        }
+    },
     command: test {
+        aliases: []
         description: ["Run the project's tests."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: true,
             accepts_files_as_input: false
+            requires_initialization: true
+            requires_project: true
         }
     },
-
     command: task {
+        aliases: []
         description: ["Run a named project task."]
-        aliases: []
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: tasks {
-        description: ["List available project tasks."]
         aliases: []
+        description: ["List available project tasks."]
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     },
-
     command: bump-version {
-        description: ["Bump the project version."]
         aliases: ["bump"]
+        description: ["Bump the project version."]
         rules: {
-            requires_project: true,
-            requires_initialization: false,
             accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
         }
     }
 }

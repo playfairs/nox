@@ -173,6 +173,21 @@ nox run demos/d/arguments.d -- red green blue
 
 The `--` separator tells Nox to stop parsing its own options. Everything after it is passed to the example as normal program arguments. For example, `red` becomes argument 1, `green` becomes argument 2, and `blue` becomes argument 3.
 
+## `nox nomlfmt <FILE|DIRECTORY>`
+
+Format NOML files using the formatter provided by the embedded NOML crate. An
+explicit file formats only that file. A directory is searched recursively for
+`.noml` files; generated `.git`, `target`, and `build` directories are skipped.
+
+```sh
+nox nomlfmt rules.noml
+nox nomlfmt .
+nox nomlfmt src/rules
+```
+
+Each formatted file is reported as it is written. The command does not require
+`nox setup` or a project build state.
+
 ## `nox targets`
 
 Print every declared target name.

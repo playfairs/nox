@@ -187,6 +187,23 @@ pub fn run() -> Result<()> {
         }
         return Ok(());
     }
+    if command == "nomlfmt" {
+        let input = positional.first().ok_or_else(|| {
+            Error::Config("nomlfmt requires a NOML file or directory".to_string())
+        })?;
+        if positional.len() > 1 {
+            return Err(Error::Config(
+                "nomlfmt accepts exactly one file or directory".to_string(),
+            ));
+        }
+        let path = PathBuf::from(input);
+        let path = if path.is_absolute() {
+            path
+        } else {
+            std::env::current_dir()?.join(path)
+        };
+        return format_noml(&path);
+    }
     if command_rule.requires_project {
         let root = project_root()?;
         return run_with_project(
@@ -215,6 +232,52 @@ fn standalone_file(input: &str) -> Option<PathBuf> {
         std::env::current_dir().ok()?.join(path)
     };
     path.is_file().then_some(path)
+}
+
+fn format_noml(path: &Path) -> Result<()> {
+    let files = if path.is_dir() {
+        let mut files = Vec::new();
+        collect_noml_files(path, &mut files)?;
+        files.sort();
+        files
+    } else if path.is_file() {
+        vec![path.to_path_buf()]
+    } else {
+        return Err(Error::Config(format!(
+            "NOML path '{}' does not exist",
+            path.display()
+        )));
+    };
+
+    if files.is_empty() {
+        return Err(Error::Config(format!(
+            "no .noml files found under '{}'",
+            path.display()
+        )));
+    }
+
+    for file in &files {
+        noml::format::format_file_in_place(file).map_err(Error::Config)?;
+        output::action("formatted", file.display());
+    }
+    Ok(())
+}
+
+fn collect_noml_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+    for entry in fs::read_dir(directory)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            if path.file_name().is_some_and(|name| {
+                matches!(name.to_str(), Some(".git" | "target" | "build"))
+            }) {
+                continue;
+            }
+            collect_noml_files(&path, files)?;
+        } else if path.extension().is_some_and(|extension| extension == "noml") {
+            files.push(path);
+        }
+    }
+    Ok(())
 }
 
 fn run_with_project(
