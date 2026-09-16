@@ -3,57 +3,46 @@ ruleset "targets" {
         language: Rust
         project_type: Executable
     },
-
     target: rust_library {
         language: Rust
         project_type: Library
     },
-
     target: executable {
         language: Cpp
         project_type: Executable
     },
-
     target: static_library {
         language: Cpp
         project_type: Library
     },
-
     target: static_library_c {
         language: C
         project_type: Library
     },
-
     target: executable {
         language: D
         project_type: Executable
     },
-
     target: executable {
         language: Haskell
         project_type: Executable
     },
-
     target: executable {
         language: Swift
         project_type: Executable
     },
-
     target: executable {
         language: FSharp
         project_type: Executable
     },
-
     target: executable {
         language: JavaScript
         project_type: Executable
     },
-
     target: executable {
         language: TypeScript
         project_type: Executable
     },
-
     target: executable {
         language: Python
         project_type: Executable

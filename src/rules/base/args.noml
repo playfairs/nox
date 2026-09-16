@@ -1,46 +1,38 @@
 ruleset "arguments" {
     argument: help {
-        takes_value: false
         repeatable: false
+        takes_value: false
     },
-
     argument: version {
-        takes_value: false
         repeatable: false
+        takes_value: false
     },
-
     argument: jobs {
-        takes_value: true
         repeatable: false
+        takes_value: true
     },
-
     argument: build-dir {
-        takes_value: true
         repeatable: false
+        takes_value: true
     },
-
     argument: compile-flag {
-        takes_value: true
         repeatable: true
-    },
-
-    argument: prefix {
         takes_value: true
-        repeatable: false
     },
-
+    argument: prefix {
+        repeatable: false
+        takes_value: true
+    },
     argument: release {
-        takes_value: false
         repeatable: false
+        takes_value: false
     },
-
     argument: debug {
-        takes_value: false
         repeatable: false
+        takes_value: false
     },
-
     argument: reconfigure {
-        takes_value: false
         repeatable: false
+        takes_value: false
     }
 }

@@ -1,119 +1,103 @@
 ruleset "files" {
     file: "Cargo.toml" {
-        languages: [Rust]
-        build_system: "Cargo"
-        project_name: "toml_name"
+        build_system: Cargo
+        languages: ["Rust"]
+        project_name: toml_name
         project_type: null
     },
-
     file: "Package.swift" {
-        languages: [Swift]
-        build_system: "SwiftPM"
+        build_system: SwiftPM
+        languages: ["Swift"]
         project_name: null
         project_type: null
     },
-
     file: "package.json" {
-        languages: [JavaScript]
-        build_system: "npm"
-        project_name: "json_name"
+        build_system: npm
+        languages: ["JavaScript"]
+        project_name: json_name
         project_type: null
     },
-
     file: "tsconfig.json" {
-        languages: [TypeScript]
         build_system: null
+        languages: ["TypeScript"]
         project_name: null
         project_type: null
     },
-
     file: "pyproject.toml" {
-        languages: [Python]
-        build_system: "pyproject"
+        build_system: pyproject
+        languages: ["Python"]
         project_name: null
         project_type: null
     },
-
     file: "CMakeLists.txt" {
+        build_system: CMake
         languages: []
-        build_system: "CMake"
         project_name: null
         project_type: null
     },
-
     file: "meson.build" {
+        build_system: Meson
         languages: []
-        build_system: "Meson"
         project_name: null
         project_type: null
     },
-
-    file: "Makefile" {
+    file: Makefile {
+        build_system: Make
         languages: []
-        build_system: "Make"
         project_name: null
         project_type: null
     },
-
-    file: "Justfile" {
+    file: Justfile {
+        build_system: Just
         languages: []
-        build_system: "Just"
         project_name: null
         project_type: null
     },
-
     file: "build.zig" {
+        build_system: Zig
         languages: []
-        build_system: "Zig"
         project_name: null
         project_type: null
     },
-
     file: "go.mod" {
+        build_system: Go
         languages: []
-        build_system: "Go"
         project_name: null
         project_type: null
     },
-
     file: "flake.nix" {
+        build_system: Nix
         languages: []
-        build_system: "Nix"
         project_name: null
         project_type: null
     },
-
     file: "rustfmt.toml" {
-        languages: []
         build_system: null
+        languages: []
         project_name: null
         project_type: null
     },
-
     file: ".clang-format" {
-        languages: []
         build_system: null
+        languages: []
         project_name: null
         project_type: null
     },
-
     file: ".prettierrc" {
-        languages: []
         build_system: null
+        languages: []
         project_name: null
         project_type: null
     },
-
     file: ".prettierrc.json" {
-        languages: []
         build_system: null
+        languages: []
         project_name: null
         project_type: null
     },
-
     file: ".swift-format" {
-        languages: []
         build_system: null
+        languages: []
         project_name: null
         project_type: null
     }

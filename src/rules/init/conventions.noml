@@ -1,31 +1,27 @@
 ruleset "conventions" {
     convention: test_directories {
+        priority: 100
+        role: directory
         values: ["test", "tests", "spec", "__tests__"]
-        priority: 100
-        role: "directory"
     },
-
     convention: main_files {
+        priority: 100
+        role: stem
         values: ["main", "Main", "index", "Program", "__main__"]
-        priority: 100
-        role: "stem"
     },
-
     convention: source_directories {
+        priority: 100
+        role: directory
         values: ["src", "source", "app", "lib"]
-        priority: 100
-        role: "directory"
     },
-
     convention: include_directories {
-        values: ["include", "includes", "inc", "headers", "public"]
         priority: 100
-        role: "directory"
+        role: directory
+        values: ["include", "includes", "inc", "headers", "public"]
     },
-
     convention: example_directories {
-        values: ["example", "examples"]
         priority: 80
-        role: "directory"
+        role: directory
+        values: ["example", "examples"]
     }
 }

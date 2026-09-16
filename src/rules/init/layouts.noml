@@ -1,79 +1,67 @@
 ruleset "layouts" {
     layout: src {
-        directory: "src"
+        directory: src
         priority: 100
-        role: "source"
+        role: source
     },
-
     layout: source {
-        directory: "source"
+        directory: source
         priority: 90
-        role: "source"
+        role: source
     },
-
     layout: app {
-        directory: "app"
+        directory: app
         priority: 80
-        role: "source"
+        role: source
     },
-
     layout: lib {
-        directory: "lib"
+        directory: lib
         priority: 70
-        role: "source"
+        role: source
     },
-
     layout: include {
-        directory: "include"
+        directory: include
         priority: 100
-        role: "include"
+        role: include
     },
-
     layout: includes {
-        directory: "includes"
+        directory: includes
         priority: 90
-        role: "include"
+        role: include
     },
-
     layout: inc {
-        directory: "inc"
+        directory: inc
         priority: 80
-        role: "include"
+        role: include
     },
-
     layout: headers {
-        directory: "headers"
+        directory: headers
         priority: 70
-        role: "include"
+        role: include
     },
-
     layout: public {
-        directory: "public"
+        directory: public
         priority: 60
-        role: "include"
+        role: include
     },
-
     layout: tests {
-        directory: "tests"
+        directory: tests
         priority: 100
-        role: "test"
+        role: test
     },
-
     layout: test {
-        directory: "test"
+        directory: test
         priority: 90
-        role: "test"
+        role: test
     },
-
     layout: spec {
-        directory: "spec"
+        directory: spec
         priority: 80
-        role: "test"
+        role: test
     },
-
     layout: examples {
-        directory: "examples"
+        directory: examples
         priority: 70
-        role: "example"
+        role: example
     }
 }

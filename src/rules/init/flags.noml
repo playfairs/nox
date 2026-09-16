@@ -1,7 +1,7 @@
 ruleset "flags" {
     flag: cxx_standard {
-        values: ["-std=c++20"]
-        languages: [Cpp]
+        languages: ["Cpp"]
         order: 10
+        values: ["-std=c++20"]
     }
 }

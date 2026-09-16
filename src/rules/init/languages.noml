@@ -1,101 +1,92 @@
 ruleset "languages" {
     language: Rust {
-        display_name: "Rust"
         aliases: ["rust"]
+        display_name: Rust
         extensions: ["rs"]
         header_extensions: []
+        main_files: ["main.rs"]
         related_files: ["Cargo.toml"]
         target_types: ["executable", "rust_library"]
-        main_files: ["main.rs"]
     },
-
     language: Haskell {
-        display_name: "Haskell"
         aliases: ["haskell", "hs"]
+        display_name: Haskell
         extensions: ["hs", "lhs"]
         header_extensions: []
+        main_files: ["Main.hs", "main.hs"]
         related_files: []
         target_types: ["executable"]
-        main_files: ["Main.hs", "main.hs"]
     },
-
     language: C {
-        display_name: "C"
         aliases: ["c"]
+        display_name: C
         extensions: ["c"]
         header_extensions: ["h"]
+        main_files: ["main.c"]
         related_files: []
         target_types: ["executable", "static_library", "shared_library"]
-        main_files: ["main.c"]
     },
-
     language: Cpp {
-        display_name: "C++"
         aliases: ["cpp", "c++", "cxx"]
+        display_name: "C++"
         extensions: ["cc", "cpp", "cxx"]
         header_extensions: ["hh", "hpp", "hxx"]
+        main_files: ["main.cpp", "main.cc", "main.cxx"]
         related_files: []
         target_types: ["executable", "static_library", "shared_library"]
-        main_files: ["main.cpp", "main.cc", "main.cxx"]
     },
-
     language: D {
-        display_name: "D"
         aliases: ["d"]
+        display_name: D
         extensions: ["d"]
         header_extensions: []
+        main_files: ["main.d"]
         related_files: []
         target_types: ["executable"]
-        main_files: ["main.d"]
     },
-
     language: Swift {
-        display_name: "Swift"
         aliases: ["swift"]
+        display_name: Swift
         extensions: ["swift"]
         header_extensions: []
+        main_files: ["main.swift"]
         related_files: ["Package.swift"]
         target_types: ["executable"]
-        main_files: ["main.swift"]
     },
-
     language: FSharp {
-        display_name: "F#"
         aliases: ["fsharp", "f#"]
+        display_name: "F#"
         extensions: ["fs", "fsx"]
         header_extensions: []
+        main_files: ["Program.fs", "main.fsx"]
         related_files: []
         target_types: ["executable"]
-        main_files: ["Program.fs", "main.fsx"]
     },
-
     language: JavaScript {
-        display_name: "JavaScript"
         aliases: ["javascript", "js"]
+        display_name: JavaScript
         extensions: ["js", "jsx", "mjs"]
         header_extensions: []
+        main_files: ["index.js", "main.js"]
         related_files: ["package.json"]
         target_types: ["executable"]
-        main_files: ["index.js", "main.js"]
     },
-
     language: TypeScript {
-        display_name: "TypeScript"
         aliases: ["typescript", "ts"]
+        display_name: TypeScript
         extensions: ["ts", "tsx"]
         header_extensions: []
+        main_files: ["index.ts", "main.ts"]
         related_files: ["package.json", "tsconfig.json"]
         target_types: ["executable"]
-        main_files: ["index.ts", "main.ts"]
     },
-
     language: Python {
-        display_name: "Python"
         aliases: ["python", "py"]
+        display_name: Python
         extensions: ["py"]
         header_extensions: []
+        main_files: ["main.py", "__main__.py"]
         related_files: ["pyproject.toml"]
         target_types: ["executable"]
-        main_files: ["main.py", "__main__.py"]
     }
 }

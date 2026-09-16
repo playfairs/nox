@@ -1,31 +1,27 @@
 ruleset "properties" {
     property: sources {
+        automatic: true
         order: 10
         required: true
-        automatic: true
     },
-
     property: include_dirs {
+        automatic: true
         order: 20
         required: false
-        automatic: true
     },
-
     property: flags {
+        automatic: true
         order: 30
         required: false
-        automatic: true
     },
-
     property: dependencies {
+        automatic: false
         order: 40
         required: false
-        automatic: false
     },
-
     property: install {
+        automatic: true
         order: 50
         required: false
-        automatic: true
     }
 }
