@@ -148,27 +148,27 @@ nox run
 nox run .
 nox run hello
 nox run main.py
-nox run examples/fsharp/Test.fsx
-nox run examples/c/Test.c -- hello world
-nox run examples/cpp/Test.cpp -- hello world
-nox run examples/python/arrays.py
-nox run examples/javascript/arrays.js
-nox run examples/ruby/arrays.rb
-nox run examples/d/arrays.d
-nox run examples/python/arguments.py -- red green blue
-nox run examples/python/exit_status.py -- 42
+nox run demos/fsharp/Test.fsx
+nox run demos/c/Test.c -- hello world
+nox run demos/cpp/Test.cpp -- hello world
+nox run demos/python/arrays.py
+nox run demos/javascript/arrays.js
+nox run demos/ruby/arrays.rb
+nox run demos/d/arrays.d
+nox run demos/python/arguments.py -- red green blue
+nox run demos/python/exit_status.py -- 42
 ```
 
 Every `arguments` example accepts the same forwarded arguments:
 
 ```sh
-nox run examples/c/arguments.c -- red green blue
-nox run examples/cpp/arguments.cpp -- red green blue
-nox run examples/python/arguments.py -- red green blue
-nox run examples/javascript/arguments.js -- red green blue
-nox run examples/ruby/arguments.rb -- red green blue
-nox run examples/fsharp/arguments.fsx -- red green blue
-nox run examples/d/arguments.d -- red green blue
+nox run demos/c/arguments.c -- red green blue
+nox run demos/cpp/arguments.cpp -- red green blue
+nox run demos/python/arguments.py -- red green blue
+nox run demos/javascript/arguments.js -- red green blue
+nox run demos/ruby/arguments.rb -- red green blue
+nox run demos/fsharp/arguments.fsx -- red green blue
+nox run demos/d/arguments.d -- red green blue
 ```
 
 The `--` separator tells Nox to stop parsing its own options. Everything after it is passed to the example as normal program arguments. For example, `red` becomes argument 1, `green` becomes argument 2, and `blue` becomes argument 3.

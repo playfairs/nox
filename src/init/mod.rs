@@ -155,6 +155,29 @@ mod tests {
     }
 
     #[test]
+    fn rust_init_uses_the_project_name_in_generated_bin_manifest() {
+        let root = temporary_root("rust-bin-name");
+        let _ = fs::remove_dir_all(&root);
+        run(
+            &root,
+            Options {
+                project_name: Some("fixture".into()),
+                language: Some("rust".into()),
+                nix: false,
+                noxfile: false,
+                ..Options::default()
+            },
+        )
+        .unwrap();
+
+        let manifest = fs::read_to_string(root.join("Cargo.toml")).unwrap();
+        assert!(manifest.contains("name = \"fixture\""));
+        assert!(!manifest.contains("name = \"{name}\""));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn initialization_rules_are_loaded_and_drive_aliases_and_ignores() {
         let rules = InitRules::load().expect("embedded init rules should load");
         assert_eq!(

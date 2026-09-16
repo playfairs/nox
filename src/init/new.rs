@@ -30,9 +30,9 @@ pub fn create_files(
         && !root.join("Cargo.toml").exists()
     {
         let kind = if project_type == ProjectType::Library {
-            "[lib]\npath = \"src/lib.rs\"\n"
+            "[lib]\npath = \"src/lib.rs\"\n".to_string()
         } else {
-            "[[bin]]\nname = \"{name}\"\npath = \"src/main.rs\"\n"
+            format!("[[bin]]\nname = \"{name}\"\npath = \"src/main.rs\"\n")
         };
         write_if_absent(
             &root.join("Cargo.toml"),

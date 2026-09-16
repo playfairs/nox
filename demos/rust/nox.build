@@ -1,0 +1,10 @@
+project "demo" {
+    description = "A project built and automated with Nox."
+
+    rust_executable "demo" {
+        sources = [
+        "src/main.rs"
+        ]
+        install = true
+    }
+}

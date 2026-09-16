@@ -1,0 +1,11 @@
+tasks:
+    format:
+        run: cargo fmt --all
+    check:
+        run: nox validate
+    build:
+        @nox check
+        run: nox build
+    test:
+        @nox build
+        run: true
