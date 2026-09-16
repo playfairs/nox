@@ -54,7 +54,9 @@ pub fn analyze(root: &Path) -> Result<Analysis> {
         has_noxfile: project.has_noxfile,
         has_git: project.has_git,
         has_readme: project.has_readme,
-        has_license: root.join("LICENSE").exists() || root.join("LICENCE").exists(),
+        has_license: ["LICENSE", "LICENCE", "UNLICENSE"]
+            .iter()
+            .any(|name| root.join(name).exists()),
         has_tests: project.has_tests,
     })
 }

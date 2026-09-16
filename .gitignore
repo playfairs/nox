@@ -2,3 +2,4 @@ build
 target
 builddir
 install
+RELEASE_NOTES.md

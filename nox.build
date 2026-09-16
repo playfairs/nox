@@ -6,7 +6,7 @@ project "nox" {
     maintainers = ["playfairs <root@playfairs.cc>"]
 
     version = file("./VERSION")
-    license = file("./LICENSE")
+    license = file("./UNLICENSE")
     version_files = ["Cargo.toml", "VERSION"]
     edition = "1"
     dependencies = []

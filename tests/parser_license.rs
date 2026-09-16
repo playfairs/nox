@@ -7,13 +7,13 @@ fn recognizes_license_file_as_spdx_identifier() {
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(&root).unwrap();
     fs::write(
-        root.join("LICENSE"),
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/LICENSE")),
+        root.join("UNLICENSE"),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/UNLICENSE")),
     )
     .unwrap();
 
     let project = parse(
-        "project \"fixture\" { license = file(\"./LICENSE\") executable \"fixture\" { sources = [\"main.c\"] } }",
+        "project \"fixture\" { license = file(\"./UNLICENSE\") executable \"fixture\" { sources = [\"main.c\"] } }",
         &root,
     )
     .expect("license file should be recognized");

@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn identifies_unlicense_text() {
-        let text = include_str!("../../LICENSE");
+        let text = include_str!("../../UNLICENSE");
         assert_eq!(identify_text(text).as_deref(), Some("Unlicense"));
     }
 
