@@ -7,9 +7,6 @@ pkgs.rustPlatform.buildRustPackage {
   src = ../.;
   cargoLock = {
     lockFile = ../Cargo.lock;
-    outputHashes = {
-      "noml-0.1.0" = "sha256-dykjiEdvzIqlHhO5XyamJAG7ztvsZlsrBekj11iCo8c=";
-    };
   };
   meta.mainProgram = "nox";
 }
