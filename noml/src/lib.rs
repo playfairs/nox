@@ -1,3 +1,5 @@
+pub mod format;
+
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq)]

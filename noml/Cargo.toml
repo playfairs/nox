@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2024"
 description = "Nox Object Modeling Language core"
 license = "Unlicense"
+default-run = "noml"
 
 [lib]
 path = "src/lib.rs"
+
+[[bin]]
+name = "nomlfmt"
+path = "src/bin/nomlfmt.rs"

@@ -1,0 +1,7 @@
+tasks:
+  start:
+    run: cargo run --quiet -- parse demo.noml
+  check:
+    run: cargo run --quiet -- check demo.noml
+  fmt:
+    run: cargo run --quiet --bin nomlfmt -- demo.noml

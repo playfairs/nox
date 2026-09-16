@@ -1,0 +1,5 @@
+ruleset "demo" {
+    parser: example {
+        kind: string
+    }
+}
