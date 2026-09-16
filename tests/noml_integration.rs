@@ -1,4 +1,4 @@
-use noml::{parse, serialize, Value};
+use noml::{Value, parse, serialize};
 
 #[test]
 fn parses_basic_noml_values_and_rulesets() {
@@ -59,13 +59,24 @@ fn serializes_parsed_noml_without_losing_structure() {
 
 #[test]
 fn loads_the_nox_command_rules_noml_file() {
-    let parsed = parse(include_str!("../src/rules/base/commands.noml")).expect("Nox commands file should parse");
+    let parsed = parse(include_str!("../src/rules/base/commands.noml"))
+        .expect("Nox commands file should parse");
     match parsed {
         Value::Ruleset(ruleset) => {
             assert_eq!(ruleset.name, "commands");
             assert!(!ruleset.entries.is_empty());
-            assert!(ruleset.entries.iter().any(|entry| entry.type_name == "command" && entry.name == "help"));
-            assert!(ruleset.entries.iter().any(|entry| entry.type_name == "command" && entry.name == "task"));
+            assert!(
+                ruleset
+                    .entries
+                    .iter()
+                    .any(|entry| entry.type_name == "command" && entry.name == "help")
+            );
+            assert!(
+                ruleset
+                    .entries
+                    .iter()
+                    .any(|entry| entry.type_name == "command" && entry.name == "task")
+            );
         }
         _ => panic!("expected a ruleset"),
     }

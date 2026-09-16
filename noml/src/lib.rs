@@ -347,7 +347,10 @@ fn resolve_entry_extensions(
     let mut merged = entry.properties.clone();
     if let Some(extension_name) = extension_name {
         let key = format!("{}:{}", entry.type_name, entry.name);
-        if stack.iter().any(|name| name == &key || name == &extension_name) {
+        if stack
+            .iter()
+            .any(|name| name == &key || name == &extension_name)
+        {
             return Err(ParseError {
                 message: format!("circular extension detected through '{extension_name}'"),
             });
@@ -356,7 +359,9 @@ fn resolve_entry_extensions(
         let parent = ruleset
             .entries
             .iter()
-            .find(|candidate| candidate.type_name == entry.type_name && candidate.name == extension_name)
+            .find(|candidate| {
+                candidate.type_name == entry.type_name && candidate.name == extension_name
+            })
             .cloned()
             .ok_or_else(|| ParseError {
                 message: format!("missing extension target '{extension_name}'"),
@@ -721,9 +726,10 @@ impl Parser {
                                 }
                             }
                         }
-                        let codepoint = u32::from_str_radix(&digits, 16).map_err(|_| ParseError {
-                            message: "invalid unicode escape".to_string(),
-                        })?;
+                        let codepoint =
+                            u32::from_str_radix(&digits, 16).map_err(|_| ParseError {
+                                message: "invalid unicode escape".to_string(),
+                            })?;
                         let ch = char::from_u32(codepoint).ok_or(ParseError {
                             message: "invalid unicode escape".to_string(),
                         })?;
@@ -923,11 +929,15 @@ impl Parser {
             index += 1;
         }
         let start = index;
-        if index >= self.chars.len() || (!self.chars[index].is_ascii_alphabetic() && self.chars[index] != '_') {
+        if index >= self.chars.len()
+            || (!self.chars[index].is_ascii_alphabetic() && self.chars[index] != '_')
+        {
             return false;
         }
         index += 1;
-        while index < self.chars.len() && (self.chars[index].is_ascii_alphanumeric() || matches!(self.chars[index], '_' | '-')) {
+        while index < self.chars.len()
+            && (self.chars[index].is_ascii_alphanumeric() || matches!(self.chars[index], '_' | '-'))
+        {
             index += 1;
         }
         let text: String = self.chars[start..index].iter().collect();
@@ -941,11 +951,7 @@ impl Parser {
             Ok(())
         } else {
             Err(ParseError {
-                message: format!(
-                    "expected '{}', found '{:?}'",
-                    expected,
-                    self.peek()
-                ),
+                message: format!("expected '{}', found '{:?}'", expected, self.peek()),
             })
         }
     }

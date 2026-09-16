@@ -1,4 +1,4 @@
-use noml::{parse as parse_noml, Value};
+use noml::{Value, parse as parse_noml};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -114,15 +114,43 @@ pub struct InitRules {
 impl InitRules {
     pub fn load() -> Result<Self, String> {
         let rules = Self {
-            languages: parse_list_of_objects(include_str!("languages.noml"), "languages", parse_language_rule)?,
-            layouts: parse_list_of_objects(include_str!("layouts.noml"), "layouts", parse_layout_rule)?,
+            languages: parse_list_of_objects(
+                include_str!("languages.noml"),
+                "languages",
+                parse_language_rule,
+            )?,
+            layouts: parse_list_of_objects(
+                include_str!("layouts.noml"),
+                "layouts",
+                parse_layout_rule,
+            )?,
             files: parse_list_of_objects(include_str!("files.noml"), "files", parse_file_rule)?,
-            ignores: parse_list_of_objects(include_str!("ignores.noml"), "ignores", parse_ignore_rule)?,
-            conventions: parse_list_of_objects(include_str!("conventions.noml"), "conventions", parse_convention_rule)?,
-            targets: parse_list_of_objects(include_str!("targets.noml"), "targets", parse_target_rule)?,
-            properties: parse_list_of_objects(include_str!("properties.noml"), "properties", parse_property_rule)?,
+            ignores: parse_list_of_objects(
+                include_str!("ignores.noml"),
+                "ignores",
+                parse_ignore_rule,
+            )?,
+            conventions: parse_list_of_objects(
+                include_str!("conventions.noml"),
+                "conventions",
+                parse_convention_rule,
+            )?,
+            targets: parse_list_of_objects(
+                include_str!("targets.noml"),
+                "targets",
+                parse_target_rule,
+            )?,
+            properties: parse_list_of_objects(
+                include_str!("properties.noml"),
+                "properties",
+                parse_property_rule,
+            )?,
             flags: parse_list_of_objects(include_str!("flags.noml"), "flags", parse_flag_rule)?,
-            templates: parse_list_of_objects(include_str!("templates.noml"), "templates", parse_template_rule)?,
+            templates: parse_list_of_objects(
+                include_str!("templates.noml"),
+                "templates",
+                parse_template_rule,
+            )?,
         };
         rules.validate()?;
         Ok(rules)
@@ -175,8 +203,13 @@ impl InitRules {
     }
 }
 
-fn parse_list_of_objects<T>(contents: &str, name: &str, converter: fn(&BTreeMap<String, Value>) -> Result<T, String>) -> Result<Vec<T>, String> {
-    let document = parse_noml(contents).map_err(|error| format!("invalid init {name} rules: {error}"))?;
+fn parse_list_of_objects<T>(
+    contents: &str,
+    name: &str,
+    converter: fn(&BTreeMap<String, Value>) -> Result<T, String>,
+) -> Result<Vec<T>, String> {
+    let document =
+        parse_noml(contents).map_err(|error| format!("invalid init {name} rules: {error}"))?;
     let entries = match document {
         Value::Ruleset(ruleset) => ruleset.entries,
         Value::Array(entries) => entries
@@ -200,10 +233,16 @@ fn parse_list_of_objects<T>(contents: &str, name: &str, converter: fn(&BTreeMap<
                         extends: None,
                     }
                 }),
-                other => Err(format!("invalid init {name} rules: expected an object entry, got {other:?}")),
+                other => Err(format!(
+                    "invalid init {name} rules: expected an object entry, got {other:?}"
+                )),
             })
             .collect::<Result<Vec<_>, String>>()?,
-        other => return Err(format!("invalid init {name} rules: expected a ruleset or array, got {other:?}")),
+        other => {
+            return Err(format!(
+                "invalid init {name} rules: expected a ruleset or array, got {other:?}"
+            ));
+        }
     };
 
     entries
@@ -213,16 +252,26 @@ fn parse_list_of_objects<T>(contents: &str, name: &str, converter: fn(&BTreeMap<
             if !fields.contains_key("name") && !entry.name.is_empty() {
                 fields.insert("name".to_string(), Value::String(entry.name.clone()));
             }
-            if entry.type_name == "language" && !fields.contains_key("language") && !entry.name.is_empty() {
+            if entry.type_name == "language"
+                && !fields.contains_key("language")
+                && !entry.name.is_empty()
+            {
                 fields.insert("language".to_string(), Value::String(entry.name.clone()));
             }
-            if entry.type_name == "argument" && !fields.contains_key("argument") && !entry.name.is_empty() {
+            if entry.type_name == "argument"
+                && !fields.contains_key("argument")
+                && !entry.name.is_empty()
+            {
                 fields.insert("argument".to_string(), Value::String(entry.name.clone()));
             }
-            if entry.type_name == "ignore" && !fields.contains_key("path") && !entry.name.is_empty() {
+            if entry.type_name == "ignore" && !fields.contains_key("path") && !entry.name.is_empty()
+            {
                 fields.insert("path".to_string(), Value::String(entry.name.clone()));
             }
-            if entry.type_name == "target" && !fields.contains_key("target") && !entry.name.is_empty() {
+            if entry.type_name == "target"
+                && !fields.contains_key("target")
+                && !entry.name.is_empty()
+            {
                 fields.insert("target".to_string(), Value::String(entry.name.clone()));
             }
             converter(&fields)
@@ -348,13 +397,17 @@ fn parse_project_type(value: &str) -> Result<ProjectType, String> {
 }
 
 fn field_string(fields: &BTreeMap<String, Value>, name: &str) -> Result<String, String> {
-    let value = fields.get(name).ok_or_else(|| format!("missing field '{name}'"))?;
+    let value = fields
+        .get(name)
+        .ok_or_else(|| format!("missing field '{name}'"))?;
     match value {
         Value::String(value) => Ok(value.clone()),
         Value::Integer(value) => Ok(value.to_string()),
         Value::Boolean(value) => Ok(value.to_string()),
         Value::Float(value) => Ok(value.to_string()),
-        other => Err(format!("field '{name}' must be a scalar string, got {other:?}")),
+        other => Err(format!(
+            "field '{name}' must be a scalar string, got {other:?}"
+        )),
     }
 }
 
@@ -366,7 +419,10 @@ fn optional_string(fields: &BTreeMap<String, Value>, name: &str) -> Result<Optio
     }
 }
 
-fn optional_project_type(fields: &BTreeMap<String, Value>, name: &str) -> Result<Option<ProjectType>, String> {
+fn optional_project_type(
+    fields: &BTreeMap<String, Value>,
+    name: &str,
+) -> Result<Option<ProjectType>, String> {
     match fields.get(name) {
         None | Some(Value::Null) => Ok(None),
         Some(value) => match value {
@@ -377,21 +433,30 @@ fn optional_project_type(fields: &BTreeMap<String, Value>, name: &str) -> Result
 }
 
 fn field_bool(fields: &BTreeMap<String, Value>, name: &str) -> Result<bool, String> {
-    match fields.get(name).ok_or_else(|| format!("missing field '{name}'"))? {
+    match fields
+        .get(name)
+        .ok_or_else(|| format!("missing field '{name}'"))?
+    {
         Value::Boolean(value) => Ok(*value),
         _ => Err(format!("field '{name}' must be a boolean")),
     }
 }
 
 fn field_integer(fields: &BTreeMap<String, Value>, name: &str) -> Result<i64, String> {
-    match fields.get(name).ok_or_else(|| format!("missing field '{name}'"))? {
+    match fields
+        .get(name)
+        .ok_or_else(|| format!("missing field '{name}'"))?
+    {
         Value::Integer(value) => Ok(*value),
         _ => Err(format!("field '{name}' must be an integer")),
     }
 }
 
 fn string_list(fields: &BTreeMap<String, Value>, name: &str) -> Result<Vec<String>, String> {
-    match fields.get(name).ok_or_else(|| format!("missing field '{name}'"))? {
+    match fields
+        .get(name)
+        .ok_or_else(|| format!("missing field '{name}'"))?
+    {
         Value::Array(values) => values
             .iter()
             .map(|value| match value {

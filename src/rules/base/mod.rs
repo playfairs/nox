@@ -1,4 +1,4 @@
-use noml::{parse as parse_noml, Value};
+use noml::{Value, parse as parse_noml};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
@@ -93,7 +93,8 @@ impl BaseRules {
 }
 
 fn parse_commands(contents: &str) -> Result<CommandRules, String> {
-    let document = parse_noml(contents).map_err(|error| format!("invalid base command rules: {error}"))?;
+    let document =
+        parse_noml(contents).map_err(|error| format!("invalid base command rules: {error}"))?;
 
     let ruleset = match document {
         Value::Ruleset(ruleset) => ruleset,
@@ -107,25 +108,53 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
                 let aliases = string_list(&fields, "aliases")?;
                 let rules = match fields.get("rules") {
                     Some(Value::Object(rules)) => rules,
-                    Some(other) => return Err(format!("command '{command}' rules must be an object, got {other:?}")),
+                    Some(other) => {
+                        return Err(format!(
+                            "command '{command}' rules must be an object, got {other:?}"
+                        ));
+                    }
                     None => &BTreeMap::new(),
                 };
                 let requires_project = bool_option(rules, "requires_project").unwrap_or(false);
                 let requires_init = bool_option(rules, "requires_initialization").unwrap_or(false);
                 let accepts_input = bool_option(rules, "accepts_files_as_input").unwrap_or(false);
-                command_entries.push((command, aliases, requires_project, requires_init, accepts_input));
+                command_entries.push((
+                    command,
+                    aliases,
+                    requires_project,
+                    requires_init,
+                    accepts_input,
+                ));
             }
             let mut commands = Vec::new();
             let mut requires_initialization = Vec::new();
             let mut accepts_files_as_input = Vec::new();
-            for (command, aliases, requires_project, requires_init, accepts_input) in command_entries {
-                commands.push(CommandRule { command: command.clone(), aliases, requires_project });
-                if requires_init { requires_initialization.push(command.clone()); }
-                if accepts_input { accepts_files_as_input.push(command); }
+            for (command, aliases, requires_project, requires_init, accepts_input) in
+                command_entries
+            {
+                commands.push(CommandRule {
+                    command: command.clone(),
+                    aliases,
+                    requires_project,
+                });
+                if requires_init {
+                    requires_initialization.push(command.clone());
+                }
+                if accepts_input {
+                    accepts_files_as_input.push(command);
+                }
             }
-            return Ok(CommandRules { commands, requires_initialization, accepts_files_as_input });
+            return Ok(CommandRules {
+                commands,
+                requires_initialization,
+                accepts_files_as_input,
+            });
         }
-        other => return Err(format!("invalid base command rules: expected a ruleset or array, got {other:?}")),
+        other => {
+            return Err(format!(
+                "invalid base command rules: expected a ruleset or array, got {other:?}"
+            ));
+        }
     };
 
     let mut commands = Vec::new();
@@ -139,17 +168,24 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
 
         let command = entry.name;
         let aliases = match entry.properties.get("aliases") {
-            Some(Value::Array(values)) => values.iter().map(|value| match value {
-                Value::String(text) => Ok(text.clone()),
-                _ => Err(format!("command '{command}' aliases must be strings")),
-            }).collect::<Result<Vec<_>, String>>()?,
+            Some(Value::Array(values)) => values
+                .iter()
+                .map(|value| match value {
+                    Value::String(text) => Ok(text.clone()),
+                    _ => Err(format!("command '{command}' aliases must be strings")),
+                })
+                .collect::<Result<Vec<_>, String>>()?,
             Some(_) => return Err(format!("command '{command}' aliases must be an array")),
             None => Vec::new(),
         };
 
         let rules = match entry.properties.get("rules") {
             Some(Value::Object(rules)) => rules,
-            Some(other) => return Err(format!("command '{command}' rules must be an object, got {other:?}")),
+            Some(other) => {
+                return Err(format!(
+                    "command '{command}' rules must be an object, got {other:?}"
+                ));
+            }
             None => &BTreeMap::new(),
         };
 
@@ -179,7 +215,8 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
 }
 
 fn parse_arguments(contents: &str) -> Result<Vec<ArgumentRule>, String> {
-    let document = parse_noml(contents).map_err(|error| format!("invalid base argument rules: {error}"))?;
+    let document =
+        parse_noml(contents).map_err(|error| format!("invalid base argument rules: {error}"))?;
     match document {
         Value::Ruleset(ruleset) => {
             let mut arguments = Vec::new();
@@ -211,7 +248,9 @@ fn parse_arguments(contents: &str) -> Result<Vec<ArgumentRule>, String> {
             }
             Ok(arguments)
         }
-        other => Err(format!("invalid base argument rules: expected a ruleset or array, got {other:?}")),
+        other => Err(format!(
+            "invalid base argument rules: expected a ruleset or array, got {other:?}"
+        )),
     }
 }
 
@@ -221,7 +260,9 @@ fn field_string(fields: &BTreeMap<String, Value>, name: &str) -> Result<String, 
         Some(Value::Integer(value)) => Ok(value.to_string()),
         Some(Value::Boolean(value)) => Ok(value.to_string()),
         Some(Value::Float(value)) => Ok(value.to_string()),
-        Some(other) => Err(format!("field '{name}' must be a scalar string, got {other:?}")),
+        Some(other) => Err(format!(
+            "field '{name}' must be a scalar string, got {other:?}"
+        )),
         None => Err(format!("missing field '{name}'")),
     }
 }
