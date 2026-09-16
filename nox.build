@@ -1,14 +1,31 @@
 project "nox" {
-    version = file("./VERSION")
     description = "The Nox Build & Automation System."
+    repository = "https://github.com/playfairs/nox"
+    website = "https://noxbuild.cc"
+    authors = ["playfairs", "invra"]
+    maintainers = ["playfairs <root@playfairs.cc>"]
+
+    version = file("./VERSION")
     license = file("./LICENSE")
+    version_files = ["Cargo.toml", "VERSION"]
     edition = "1"
     dependencies = []
-    version_files = ["Cargo.toml", "VERSION"]
 
-    rust_executable "nox" {
+    executable.rust "nox" {
         sources = ["src/main.rs"]
         flags = []
         install = true
+    }
+}
+
+project "noml" {
+    version = "0.1.0"
+    description = "NOML parser demo runner."
+    edition = "1"
+
+    executable.rust "noml" {
+        sources = ["noml/src/main.rs"]
+        flags = []
+        install = false
     }
 }

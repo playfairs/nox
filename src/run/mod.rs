@@ -21,7 +21,7 @@ pub fn execute(
 ) -> Result<i32> {
     let input = input.unwrap_or(".");
     let path = project_root.join(input);
-    if path.is_dir() {
+    if path.is_dir() && (input == "." || !project_root.join("nox.build").is_file()) {
         return ProjectRunner::new(build_dir, configuration, jobs).run(None, arguments);
     }
     if path.is_file() {
@@ -63,7 +63,14 @@ impl<'a> ProjectRunner<'a> {
                 self.configuration
             )));
         }
-        let project = parser::parse_file(&state.root.join("nox.build"))?;
+        let projects = parser::parse_file_projects(&state.root.join("nox.build"))?;
+        let Some(project) = select_project(&projects, requested_target)? else {
+            return Ok(0);
+        };
+        let requested_target = (projects.len() == 1
+            && requested_target.is_some_and(|name| name != project.name))
+        .then_some(requested_target)
+        .flatten();
         graph::validate(&project)?;
         executor::build(&project, &state, self.jobs)?;
         let target = select_target(&project, requested_target)?;
@@ -78,6 +85,48 @@ impl<'a> ProjectRunner<'a> {
     }
 }
 
+fn select_project<'a>(projects: &'a [Project], requested: Option<&str>) -> Result<Option<&'a Project>> {
+    if let Some(name) = requested {
+        if let Some(project) = projects.iter().find(|project| project.name == name) {
+            return Ok(Some(project));
+        }
+        if projects.len() == 1 {
+            return Ok(Some(&projects[0]));
+        }
+        return Err(Error::Config(format!(
+            "unknown project '{name}'; available projects: {}. Use `nox run <project>`",
+            projects
+                .iter()
+                .map(|project| project.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
+    }
+    if projects.len() == 1 {
+        return Ok(Some(&projects[0]));
+    }
+    let executables = projects
+        .iter()
+        .flat_map(|project| {
+            project.targets.iter().filter_map(|target| {
+                is_executable(target.kind.clone()).then(|| {
+                    format!(
+                        "  {}: {} (nox run {})",
+                        project.name, target.name, project.name
+                    )
+                })
+            })
+        })
+        .collect::<Vec<_>>();
+    println!(
+        "nox.build defines {} projects and {} executables; specify a project with `nox run <project>`:\n{}",
+        projects.len(),
+        executables.len(),
+        executables.join("\n")
+    );
+    Ok(None)
+}
+
 fn select_target<'a>(project: &'a Project, requested: Option<&str>) -> Result<&'a Target> {
     if let Some(name) = requested {
         let target = project
@@ -90,21 +139,93 @@ fn select_target<'a>(project: &'a Project, requested: Option<&str>) -> Result<&'
         }
         return Ok(target);
     }
-    project
+
+    let runnable: Vec<&Target> = project
         .targets
         .iter()
-        .find(|target| is_executable(target.kind.clone()))
-        .ok_or_else(|| Error::Config("project has no runnable executable target".to_string()))
+        .filter(|target| is_executable(target.kind.clone()))
+        .collect();
+
+    match runnable.len() {
+        0 => Err(Error::Config(
+            "project has no runnable executable target".to_string(),
+        )),
+        1 => Ok(runnable[0]),
+        _ => Err(Error::Config(format!(
+            "there are {} executables in this project; use `nox targets` to list them and `nox run <name>` to run one",
+            runnable.len()
+        ))),
+    }
 }
 
 fn is_executable(kind: TargetKind) -> bool {
-    matches!(
-        kind,
-        TargetKind::Executable
-            | TargetKind::CppExecutable
-            | TargetKind::RustExecutable
-            | TargetKind::DExecutable
-    )
+    matches!(kind, TargetKind::Executable { .. })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::select_target;
+    use crate::core::model::{Project, Target, TargetKind};
+    use std::collections::HashMap;
+
+    fn executable(name: &str) -> Target {
+        Target {
+            name: name.to_string(),
+            kind: TargetKind::Executable { language: None },
+            sources: vec![],
+            dependencies: vec![],
+            include_dirs: vec![],
+            defines: vec![],
+            flags: vec![],
+            linker_flags: vec![],
+            install: false,
+        }
+    }
+
+    #[test]
+    fn selects_single_executable_without_explicit_name() {
+        let project = Project {
+            name: "demo".to_string(),
+            version: None,
+            version_files: None,
+            description: String::new(),
+            license: String::new(),
+            edition: "1".to_string(),
+            dependencies: vec![],
+            repository: None,
+            website: None,
+            authors: vec![],
+            maintainers: vec![],
+            targets: vec![executable("app")],
+            settings: HashMap::new(),
+        };
+
+        assert_eq!(select_target(&project, None).unwrap().name, "app");
+    }
+
+    #[test]
+    fn rejects_ambiguous_run_without_target_name() {
+        let project = Project {
+            name: "demo".to_string(),
+            version: None,
+            version_files: None,
+            description: String::new(),
+            license: String::new(),
+            edition: "1".to_string(),
+            dependencies: vec![],
+            repository: None,
+            website: None,
+            authors: vec![],
+            maintainers: vec![],
+            targets: vec![executable("app"), executable("worker")],
+            settings: HashMap::new(),
+        };
+
+        let error = select_target(&project, None).unwrap_err().to_string();
+        assert!(error.contains("there are 2 executables in this project"));
+        assert!(error.contains("nox targets"));
+        assert!(error.contains("nox run <name>"));
+    }
 }
 
 fn run_project_artifact(target: &Target, artifact: &Path, arguments: &[String]) -> Result<i32> {

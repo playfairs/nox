@@ -300,7 +300,7 @@ fn run_with_project(
             output::action("validated", project.name);
             Ok(())
         }
-        "status" | "stat" => status(&state_dir),
+        "status" | "stat" => status(&state_dir, positional.first().map(String::as_str)),
         "riders" => unreachable!(),
         "graph" => {
             let project = parser::parse_file(&root.join("nox.build"))?;
@@ -331,7 +331,14 @@ fn run_with_project(
             } else {
                 root.join(prefix)
             };
-            install(&root, &state_dir, &configuration, jobs, &prefix)
+            install(
+                &root,
+                &state_dir,
+                &configuration,
+                jobs,
+                &prefix,
+                positional.first().map(String::as_str),
+            )
         }
         "uninstall" => {
             let prefix = if prefix.is_absolute() {
@@ -600,6 +607,7 @@ fn install(
     configuration: &str,
     jobs: usize,
     prefix: &Path,
+    requested_project: Option<&str>,
 ) -> Result<()> {
     let needs_setup = !BuildState::path(build_dir).exists()
         || BuildState::load(build_dir)?.configuration != configuration;
@@ -607,7 +615,10 @@ fn install(
         setup(root, build_dir, configuration, Vec::new())?;
     }
     let state = BuildState::load(build_dir)?;
-    let project = parser::parse_file(&root.join("nox.build"))?;
+    let projects = parser::parse_file_projects(&root.join("nox.build"))?;
+    let Some(project) = select_install_project(&projects, requested_project)? else {
+        return Ok(());
+    };
     graph::validate(&project)?;
     executor::build(&project, &state, jobs)?;
     for target in project.targets.iter().filter(|target| target.install) {
@@ -646,13 +657,16 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
     Ok(())
 }
 
-fn status(build_dir: &Path) -> Result<()> {
+fn status(build_dir: &Path, requested_project: Option<&str>) -> Result<()> {
     if !BuildState::path(build_dir).exists() {
         output::warning(format!("not configured: {}", build_dir.display()));
         return Ok(());
     }
     let state = BuildState::load(build_dir)?;
-    let project = parser::parse_file(&state.root.join("nox.build"))?;
+    let projects = parser::parse_file_projects(&state.root.join("nox.build"))?;
+    let Some(project) = select_status_project(&projects, requested_project)? else {
+        return Ok(());
+    };
     let project_label = project.version.as_deref().map_or_else(
         || project.name.clone(),
         |version| format!("{} {version}", project.name),
@@ -663,6 +677,18 @@ fn status(build_dir: &Path) -> Result<()> {
     }
     if !project.license.is_empty() {
         output::key_value("license", &project.license);
+    }
+    if let Some(repository) = &project.repository {
+        output::key_value("repository", repository);
+    }
+    if let Some(website) = &project.website {
+        output::key_value("website", website);
+    }
+    if !project.authors.is_empty() {
+        output::key_value("authors", project.authors.join(", "));
+    }
+    if !project.maintainers.is_empty() {
+        output::key_value("maintainers", project.maintainers.join(", "));
     }
     output::key_value("edition", &project.edition);
     output::key_value("dependencies", project.dependencies.len());
@@ -675,6 +701,86 @@ fn status(build_dir: &Path) -> Result<()> {
     output::key_value("compile flags", format!("{:?}", state.compile_flags));
     output::key_value("targets", project.targets.len());
     Ok(())
+}
+
+fn select_status_project<'a>(
+    projects: &'a [crate::core::model::Project],
+    requested: Option<&str>,
+) -> Result<Option<&'a crate::core::model::Project>> {
+    if let Some(name) = requested {
+        return projects
+            .iter()
+            .find(|project| project.name == name)
+            .map(Some)
+            .ok_or_else(|| {
+                Error::Config(format!(
+                    "unknown project '{name}'; available projects: {}",
+                    projects
+                        .iter()
+                        .map(|project| project.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
+            });
+    }
+    if projects.len() == 1 {
+        return Ok(Some(&projects[0]));
+    }
+    println!("{}", project_selection_message(projects, "stat"));
+    Ok(None)
+}
+
+fn select_install_project<'a>(
+    projects: &'a [crate::core::model::Project],
+    requested: Option<&str>,
+) -> Result<Option<&'a crate::core::model::Project>> {
+    if let Some(name) = requested {
+        return projects
+            .iter()
+            .find(|project| project.name == name)
+            .map(Some)
+            .ok_or_else(|| {
+                Error::Config(format!(
+                    "unknown project '{name}'; available projects: {}",
+                    projects
+                        .iter()
+                        .map(|project| project.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
+            });
+    }
+    if projects.len() == 1 {
+        return Ok(Some(&projects[0]));
+    }
+    println!("{}", project_selection_message(projects, "install"));
+    Ok(None)
+}
+
+fn project_selection_message(
+    projects: &[crate::core::model::Project],
+    command: &str,
+) -> String {
+    let executables = projects
+        .iter()
+        .flat_map(|project| {
+            project.targets.iter().filter_map(|target| {
+                matches!(target.kind, TargetKind::Executable { .. }).then(|| {
+                    format!(
+                        "  {}: {} (nox {} {})",
+                        project.name, target.name, command, project.name
+                    )
+                })
+            })
+        })
+        .collect::<Vec<_>>();
+    format!(
+        "nox.build defines {} projects and {} executables; specify a project with `nox {} <project>`:\n{}",
+        projects.len(),
+        executables.len(),
+        command,
+        executables.join("\n")
+    )
 }
 
 fn install_directory(prefix: &Path, target: &Target) -> PathBuf {
