@@ -1,5 +1,5 @@
 use crate::core::error::{Error, Result};
-use crate::core::model::{Project, Setting, Target, TargetKind};
+use crate::core::model::{Project, Setting, Target, TargetKind, TargetLanguage};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -21,11 +21,23 @@ enum Value {
 }
 
 pub fn parse_file(path: &Path) -> Result<Project> {
+    Ok(parse_file_projects(path)?.into_iter().next().ok_or_else(|| {
+        Error::Config("nox.build must define at least one project".to_string())
+    })?)
+}
+
+pub fn parse_file_projects(path: &Path) -> Result<Vec<Project>> {
     let text = fs::read_to_string(path)?;
-    parse(&text, path.parent().unwrap_or(Path::new(".")))
+    parse_projects(&text, path.parent().unwrap_or(Path::new(".")))
 }
 
 pub fn parse(text: &str, root: &Path) -> Result<Project> {
+    Ok(parse_projects(text, root)?.into_iter().next().ok_or_else(|| {
+        Error::Config("nox.build must define at least one project".to_string())
+    })?)
+}
+
+pub fn parse_projects(text: &str, root: &Path) -> Result<Vec<Project>> {
     let tokens = lex(text)?;
     let mut parser = Parser {
         tokens,
@@ -34,7 +46,7 @@ pub fn parse(text: &str, root: &Path) -> Result<Project> {
         bindings: HashMap::new(),
         settings: HashMap::new(),
     };
-    parser.project()
+    parser.projects()
 }
 
 fn lex(text: &str) -> Result<Vec<Token>> {
@@ -72,7 +84,7 @@ fn lex(text: &str) -> Result<Vec<Token>> {
                 _ => {}
             }
         }
-        if "{}[]=(),:".contains(character) {
+        if "{}[]=(),:.".contains(character) {
             tokens.push(Token::Symbol(character));
             continue;
         }
@@ -120,7 +132,7 @@ fn lex(text: &str) -> Result<Vec<Token>> {
         }
         let mut value = String::from(character);
         while let Some(next) = chars.peek().copied() {
-            if next.is_whitespace() || "{}[]=(),:\"`".contains(next) {
+            if next.is_whitespace() || "{}[]=(),.:\"`".contains(next) {
                 break;
             }
             value.push(next);
@@ -140,7 +152,7 @@ struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn project(&mut self) -> Result<Project> {
+    fn projects(&mut self) -> Result<Vec<Project>> {
         loop {
             if self.take_word("set") || self.is_setting_start() {
                 self.setting()?;
@@ -148,7 +160,20 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        self.expect_word("project")?;
+        let mut projects = Vec::new();
+        while self.position < self.tokens.len() {
+            self.expect_word("project")?;
+            projects.push(self.project_body()?);
+        }
+        if projects.is_empty() {
+            return Err(Error::Config(
+                "nox.build must define at least one project".to_string(),
+            ));
+        }
+        Ok(projects)
+    }
+
+    fn project_body(&mut self) -> Result<Project> {
         let name = self.string_or_word()?;
         self.expect_symbol('{')?;
         let mut version = None;
@@ -157,6 +182,10 @@ impl<'a> Parser<'a> {
         let mut license = String::new();
         let mut edition = "1".to_string();
         let mut dependencies = Vec::new();
+        let mut repository = None;
+        let mut website = None;
+        let mut authors = Vec::new();
+        let mut maintainers = Vec::new();
         let mut targets = Vec::new();
         while !self.take_symbol('}') {
             match self.word()?.as_str() {
@@ -190,17 +219,40 @@ impl<'a> Parser<'a> {
                     self.expect_symbol('=')?;
                     dependencies = self.strings()?;
                 }
-                "executable" => targets.push(self.target(TargetKind::Executable)?),
-                "cxx_executable" => targets.push(self.target(TargetKind::CppExecutable)?),
+                "repository" => {
+                    self.expect_symbol('=')?;
+                    repository = Some(self.string_or_word()?);
+                }
+                "website" => {
+                    self.expect_symbol('=')?;
+                    website = Some(self.string_or_word()?);
+                }
+                "authors" => {
+                    self.expect_symbol('=')?;
+                    authors = self.strings()?;
+                }
+                "maintainers" => {
+                    self.expect_symbol('=')?;
+                    maintainers = self.strings()?;
+                }
+                "executable" => {
+                    let language = if self.take_symbol('.') {
+                        let value = self.word()?;
+                        Some(TargetLanguage::parse(&value).ok_or_else(|| {
+                            Error::Config(format!("unsupported executable language '{value}'"))
+                        })?)
+                    } else {
+                        None
+                    };
+                    targets.push(self.target(TargetKind::Executable { language })?)
+                }
                 "static_library" | "static" => {
                     targets.push(self.target(TargetKind::StaticLibrary)?)
                 }
                 "shared_library" | "shared" => {
                     targets.push(self.target(TargetKind::SharedLibrary)?)
                 }
-                "rust_executable" => targets.push(self.target(TargetKind::RustExecutable)?),
                 "rust_library" => targets.push(self.target(TargetKind::RustLibrary)?),
-                "d_executable" => targets.push(self.target(TargetKind::DExecutable)?),
                 unknown => return Err(Error::Parse(format!("unknown project member '{unknown}'"))),
             }
         }
@@ -217,6 +269,10 @@ impl<'a> Parser<'a> {
             license,
             edition,
             dependencies,
+            repository,
+            website,
+            authors,
+            maintainers,
             targets,
             settings: self.settings.clone(),
         })

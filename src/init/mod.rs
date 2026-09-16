@@ -190,7 +190,7 @@ mod tests {
                 .target(Language::Cpp, ProjectType::Executable)
                 .unwrap()
                 .target,
-            "cxx_executable"
+            "executable"
         );
     }
 
@@ -212,6 +212,7 @@ mod tests {
             ProjectType::Executable,
             "fixture",
         );
+        assert!(generated.contains("executable.cpp \"fixture\""));
         assert!(generated.contains("\"src/main.cpp\",\n        \"src/nested/util.cpp\""));
         assert!(generated.find("sources =").unwrap() < generated.find("include_dirs =").unwrap());
         assert!(generated.find("include_dirs =").unwrap() < generated.find("flags =").unwrap());

@@ -4,6 +4,22 @@ use std::path::Path;
 pub use crate::rules::init::{Language, ProjectType};
 
 impl Language {
+    pub fn qualifier(self) -> &'static str {
+        match self {
+            Self::Rust => "rust",
+            Self::Haskell => "haskell",
+            Self::C => "c",
+            Self::Cpp => "cpp",
+            Self::D => "d",
+            Self::Swift => "swift",
+            Self::FSharp => "fsharp",
+            Self::JavaScript => "javascript",
+            Self::TypeScript => "typescript",
+            Self::Python => "python",
+            Self::Unknown => "unknown",
+        }
+    }
+
     pub fn parse(value: &str) -> Option<Self> {
         Self::parse_with_rules(value, embedded_rules())
     }

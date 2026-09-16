@@ -1,6 +1,6 @@
 use crate::build_system::state::BuildState;
 use crate::core::error::{Error, Result};
-use crate::core::model::{Project, Target, TargetKind};
+use crate::core::model::{Project, Target, TargetKind, TargetLanguage};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -25,11 +25,18 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         .join(&state.configuration)
         .join(&target.name);
     fs::create_dir_all(&output_dir)?;
-    if matches!(
-        target.kind,
-        TargetKind::RustExecutable | TargetKind::RustLibrary | TargetKind::DExecutable
-    ) {
-        let compiler = if target.kind == TargetKind::DExecutable {
+    let special_language = match target.kind {
+        TargetKind::Executable {
+            language: Some(TargetLanguage::Rust),
+        }
+        | TargetKind::RustLibrary => Some(crate::toolchain::rider::RiderKind::Rust),
+        TargetKind::Executable {
+            language: Some(TargetLanguage::D),
+        } => Some(crate::toolchain::rider::RiderKind::D),
+        _ => None,
+    };
+    if let Some(language) = special_language {
+        let compiler = if language == crate::toolchain::rider::RiderKind::D {
             crate::toolchain::detection::detect_rider(crate::toolchain::rider::RiderKind::D)?
         } else {
             crate::toolchain::detection::detect_rust()?
@@ -39,21 +46,23 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             .first()
             .ok_or_else(|| Error::Config("Rust target has no source".to_string()))?;
         let output = artifact_path(&output_dir, target);
-        if target.kind == TargetKind::RustExecutable && state.root.join("Cargo.toml").is_file() {
+        if language == crate::toolchain::rider::RiderKind::Rust
+            && state.root.join("Cargo.toml").is_file()
+        {
             build_cargo_target(target, state, &output)?;
             crate::core::output::action("built", output.display());
             return Ok(());
         }
         let mut command = Command::new(compiler);
-        if target.kind == TargetKind::DExecutable {
+        if language == crate::toolchain::rider::RiderKind::D {
             command.arg("-J").arg(&state.root);
         }
-        if target.kind == TargetKind::DExecutable {
+        if language == crate::toolchain::rider::RiderKind::D {
             command.args(&target.sources);
         } else {
             command.arg(source);
         }
-        if target.kind == TargetKind::DExecutable {
+        if language == crate::toolchain::rider::RiderKind::D {
             command.arg("-of").arg(&output);
         } else {
             command.arg("-o").arg(&output);
@@ -63,7 +72,7 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         if target.kind == TargetKind::RustLibrary {
             command.args(["--crate-type", "lib"]);
         }
-        if target.kind == TargetKind::DExecutable {
+        if language == crate::toolchain::rider::RiderKind::D {
             command.args(target.linker_flags.iter().map(|flag| {
                 flag.strip_prefix("-l")
                     .map(|library| format!("-L-l{library}"))
@@ -74,16 +83,12 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         crate::core::output::action("built", output.display());
         return Ok(());
     }
-    if let Some(rider) = target
-        .sources
-        .first()
-        .and_then(|source| crate::toolchain::rider::for_source(source))
-    {
+    if let Some(rider) = rider_for_target(target) {
         if !matches!(
-            rider.kind,
+            rider,
             crate::toolchain::rider::RiderKind::C | crate::toolchain::rider::RiderKind::Cpp
         ) {
-            return build_external_target(target, state, &output_dir, rider.kind);
+            return build_external_target(target, state, &output_dir, rider);
         }
     }
     let sources = Arc::new(target.sources.clone());
@@ -139,7 +144,7 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             command.args(args).args(&objects).arg("-o").arg(&output);
             run(command)?;
         }
-        TargetKind::Executable | TargetKind::CppExecutable => {
+        TargetKind::Executable { .. } => {
             let linker = linker_for_target(target, &state.linker);
             let mut command = Command::new(linker);
             command.args(args).args(&objects);
@@ -161,7 +166,7 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             command.arg("-o").arg(&output);
             run(command)?;
         }
-        TargetKind::RustExecutable | TargetKind::RustLibrary | TargetKind::DExecutable => {
+        TargetKind::RustLibrary => {
             unreachable!()
         }
     }
@@ -383,7 +388,7 @@ fn compile(
     let object = output_dir.join(format!("{stem}.o"));
     let depfile = output_dir.join(format!("{stem}.d"));
     if object_needs_build(&object, source, &depfile) {
-        let compiler = if target.kind == TargetKind::CppExecutable
+        let compiler = if is_cpp(target)
             || crate::toolchain::rider::for_source(source)
                 .is_some_and(|rider| rider.kind == crate::toolchain::rider::RiderKind::Cpp)
         {
@@ -405,7 +410,7 @@ fn compile(
         } else {
             command.arg("-O2");
         }
-        let is_cpp = target.kind == TargetKind::CppExecutable
+        let is_cpp = is_cpp(target)
             || crate::toolchain::rider::for_source(source)
                 .is_some_and(|rider| rider.kind == crate::toolchain::rider::RiderKind::Cpp);
         if is_cpp
@@ -449,13 +454,17 @@ pub fn target_artifact_path(directory: &Path, target: &Target) -> PathBuf {
     target
         .sources
         .first()
-        .and_then(|source| crate::toolchain::rider::for_source(source.as_path()))
-        .map(|rider| external_artifact_path(directory, target, rider.kind))
+        .and_then(|source| {
+            rider_for_target(target).or_else(|| {
+                crate::toolchain::rider::for_source(source.as_path()).map(|rider| rider.kind)
+            })
+        })
+        .map(|rider| external_artifact_path(directory, target, rider))
         .unwrap_or_else(|| artifact_path(directory, target))
 }
 
 fn linker_for_target(target: &Target, c_linker: &str) -> String {
-    if target.kind == TargetKind::CppExecutable
+    if is_cpp(target)
         || target.sources.iter().any(|source| {
             crate::toolchain::rider::for_source(source)
                 .is_some_and(|rider| rider.kind == crate::toolchain::rider::RiderKind::Cpp)
@@ -464,6 +473,36 @@ fn linker_for_target(target: &Target, c_linker: &str) -> String {
         crate::toolchain::detection::detect_cpp()
     } else {
         c_linker.to_string()
+    }
+}
+
+fn is_cpp(target: &Target) -> bool {
+    matches!(
+        target.kind,
+        TargetKind::Executable {
+            language: Some(TargetLanguage::Cpp)
+        }
+    )
+}
+
+fn rider_for_target(target: &Target) -> Option<crate::toolchain::rider::RiderKind> {
+    let language = match target.kind {
+        TargetKind::Executable {
+            language: Some(language),
+        } => language,
+        _ => return None,
+    };
+    match language {
+        TargetLanguage::Rust => Some(crate::toolchain::rider::RiderKind::Rust),
+        TargetLanguage::Haskell => Some(crate::toolchain::rider::RiderKind::Haskell),
+        TargetLanguage::C => Some(crate::toolchain::rider::RiderKind::C),
+        TargetLanguage::Cpp => Some(crate::toolchain::rider::RiderKind::Cpp),
+        TargetLanguage::D => Some(crate::toolchain::rider::RiderKind::D),
+        TargetLanguage::Swift => Some(crate::toolchain::rider::RiderKind::Swift),
+        TargetLanguage::JavaScript => Some(crate::toolchain::rider::RiderKind::JavaScript),
+        TargetLanguage::TypeScript => Some(crate::toolchain::rider::RiderKind::TypeScript),
+        TargetLanguage::Python => Some(crate::toolchain::rider::RiderKind::Python),
+        TargetLanguage::FSharp => None,
     }
 }
 

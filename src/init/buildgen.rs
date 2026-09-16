@@ -44,6 +44,11 @@ pub fn render(
         .target(language, project_type)
         .map(|rule| rule.target.as_str())
         .unwrap_or("executable");
+    let target = if target == "executable" {
+        format!("executable.{}", language.qualifier())
+    } else {
+        target.to_string()
+    };
     let default_flags = rules
         .flags
         .iter()

@@ -1,7 +1,7 @@
 project "demo" {
     description = "A project built and automated with Nox."
 
-    rust_executable "demo" {
+    executable.rust "demo" {
         sources = [
         "src/main.rs"
         ]

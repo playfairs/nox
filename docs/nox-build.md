@@ -10,7 +10,7 @@ The file contains one project declaration:
 project "nox" {
     description = "The Nox Build & Automation System."
 
-    rust_executable "nox" {
+    executable.rust "nox" {
         sources = ["src/main.rs"]
         flags = []
         install = true
@@ -199,17 +199,25 @@ executable "app" {
 }
 ```
 
-Use `cxx_executable` when the target should always use the C++ compiler and linker, regardless of source extension:
+Use `executable.cpp` when the target should always use the C++ compiler and linker, regardless of source extension:
 
 ```text
-cxx_executable "app" {
+executable.cpp "app" {
     sources = ["src/main.cpp"]
 }
 ```
 
 ### Other language executables
 
-The generic `executable` target selects its Rider from the source extension:
+Use `executable.<language>` when the target language is known explicitly:
+
+```text
+executable.python "tool" {
+    sources = ["main.py"]
+}
+```
+
+The generic `executable` target selects its Rider from the source extension when no language qualifier is provided:
 
 ```text
 executable "tool" {
@@ -222,7 +230,7 @@ The same form works for D, Java, C#, Swift, Zig, Python, JavaScript, TypeScript,
 ### Rust executable
 
 ```text
-rust_executable "tool" {
+executable.rust "tool" {
     sources = ["src/main.rs"]
     flags = []
     install = true

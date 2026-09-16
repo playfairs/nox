@@ -1,5 +1,5 @@
 project "example" {
-    cxx_executable "app" {
+    executable.cpp "app" {
         sources = ["main.cpp"]
     }
 }

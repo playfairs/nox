@@ -5,7 +5,7 @@ ruleset "languages" {
         extensions: ["rs"]
         header_extensions: []
         related_files: ["Cargo.toml"]
-        target_types: ["rust_executable", "rust_library"]
+        target_types: ["executable", "rust_library"]
         main_files: ["main.rs"]
     },
 
@@ -35,7 +35,7 @@ ruleset "languages" {
         extensions: ["cc", "cpp", "cxx"]
         header_extensions: ["hh", "hpp", "hxx"]
         related_files: []
-        target_types: ["cxx_executable", "static_library", "shared_library"]
+        target_types: ["executable", "static_library", "shared_library"]
         main_files: ["main.cpp", "main.cc", "main.cxx"]
     },
 
@@ -45,7 +45,7 @@ ruleset "languages" {
         extensions: ["d"]
         header_extensions: []
         related_files: []
-        target_types: ["d_executable"]
+        target_types: ["executable"]
         main_files: ["main.d"]
     },
 

@@ -1,5 +1,5 @@
 ruleset "targets" {
-    target: rust_executable {
+    target: executable {
         language: Rust
         project_type: Executable
     },
@@ -9,7 +9,7 @@ ruleset "targets" {
         project_type: Library
     },
 
-    target: cxx_executable {
+    target: executable {
         language: Cpp
         project_type: Executable
     },
@@ -19,47 +19,42 @@ ruleset "targets" {
         project_type: Library
     },
 
-    target: executable {
-        language: C
-        project_type: Executable
-    },
-
     target: static_library_c {
         language: C
         project_type: Library
     },
 
-    target: d_executable {
+    target: executable {
         language: D
         project_type: Executable
     },
 
-    target: executable_haskell {
+    target: executable {
         language: Haskell
         project_type: Executable
     },
 
-    target: executable_swift {
+    target: executable {
         language: Swift
         project_type: Executable
     },
 
-    target: executable_fsharp {
+    target: executable {
         language: FSharp
         project_type: Executable
     },
 
-    target: executable_javascript {
+    target: executable {
         language: JavaScript
         project_type: Executable
     },
 
-    target: executable_typescript {
+    target: executable {
         language: TypeScript
         project_type: Executable
     },
 
-    target: executable_python {
+    target: executable {
         language: Python
         project_type: Executable
     }
