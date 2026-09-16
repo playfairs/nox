@@ -1,0 +1,9 @@
+[package]
+name = "noml"
+version = "0.1.0"
+edition = "2024"
+description = "Nox Object Modeling Language core"
+license = "Unlicense"
+
+[lib]
+path = "src/lib.rs"

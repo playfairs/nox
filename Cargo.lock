@@ -220,7 +220,6 @@ dependencies = [
 [[package]]
 name = "noml"
 version = "0.1.0"
-source = "git+https://github.com/playfairs/noml.git#59c30948f6898467edc5a0dee815dddaaae572e4"
 
 [[package]]
 name = "nox"

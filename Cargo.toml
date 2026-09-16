@@ -13,6 +13,6 @@ strip = true
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
-noml = { git = "https://github.com/playfairs/noml.git" }
+noml = { path = "./noml" }
 askalono = "0.5"
 license = "3.8"
