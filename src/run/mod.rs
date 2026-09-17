@@ -5,7 +5,8 @@ use crate::core::graph;
 use crate::core::model::{Project, Target, TargetKind};
 use crate::project::parser;
 use crate::toolchain::{detection, rider};
-use serde::Deserialize;
+use noml::{Value, parse as parse_noml};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
@@ -285,15 +286,14 @@ pub fn handler_language(source: &Path) -> Result<String> {
     Ok(HandlerRegistry::resolve(source)?.language)
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum HandlerMode {
     Runtime,
     Compile,
     Unsupported,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct HandlerDefinition {
     language: String,
     extensions: Vec<String>,
@@ -303,9 +303,96 @@ struct HandlerDefinition {
     dependency: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 struct HandlerFile {
     handlers: Vec<HandlerDefinition>,
+}
+
+impl HandlerFile {
+    fn parse_registry() -> Result<Self> {
+        let document = parse_noml(include_str!("handlers.noml"))
+            .map_err(|error| Error::Config(format!("invalid run handler registry: {error}")))?;
+        let ruleset = match document {
+            Value::Ruleset(ruleset) => ruleset,
+            other => {
+                return Err(Error::Config(format!(
+                    "invalid run handler registry: expected ruleset root, got {other:?}"
+                )))
+            }
+        };
+        let handlers = ruleset
+            .entries
+            .into_iter()
+            .filter(|entry| entry.type_name == "handler")
+            .map(|entry| HandlerDefinition::from_noml_entry(entry))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Self { handlers })
+    }
+}
+
+impl HandlerDefinition {
+    fn from_noml_entry(entry: noml::Entry) -> Result<Self> {
+        let fields = entry.properties;
+        Ok(Self {
+            language: string_field(&fields, "language")?,
+            extensions: string_list_field(&fields, "extensions")?,
+            mode: mode_field(&fields, "mode")?,
+            tools: string_list_field(&fields, "tools")?,
+            arguments: string_list_field(&fields, "arguments")?,
+            dependency: string_field(&fields, "dependency")?,
+        })
+    }
+}
+
+fn string_field(fields: &BTreeMap<String, Value>, key: &str) -> Result<String> {
+    match fields.get(key) {
+        Some(Value::String(value)) => Ok(value.clone()),
+        Some(other) => Err(Error::Config(format!(
+            "invalid run handler field '{key}': expected string, got {other:?}"
+        ))),
+        None => Err(Error::Config(format!(
+            "invalid run handler field '{key}': missing value"
+        ))),
+    }
+}
+
+fn string_list_field(fields: &BTreeMap<String, Value>, key: &str) -> Result<Vec<String>> {
+    match fields.get(key) {
+        Some(Value::Array(values)) => values
+            .iter()
+            .map(|value| match value {
+                Value::String(part) => Ok(part.clone()),
+                other => Err(Error::Config(format!(
+                    "invalid run handler field '{key}': expected string list, got {other:?}"
+                ))),
+            })
+            .collect(),
+        Some(other) => Err(Error::Config(format!(
+            "invalid run handler field '{key}': expected array, got {other:?}"
+        ))),
+        None => Err(Error::Config(format!(
+            "invalid run handler field '{key}': missing value"
+        ))),
+    }
+}
+
+fn mode_field(fields: &BTreeMap<String, Value>, key: &str) -> Result<HandlerMode> {
+    match fields.get(key) {
+        Some(Value::String(value)) => match value.as_str() {
+            "runtime" => Ok(HandlerMode::Runtime),
+            "compile" => Ok(HandlerMode::Compile),
+            "unsupported" => Ok(HandlerMode::Unsupported),
+            other => Err(Error::Config(format!(
+                "invalid run handler field '{key}': unsupported mode '{other}'"
+            ))),
+        },
+        Some(other) => Err(Error::Config(format!(
+            "invalid run handler field '{key}': expected string, got {other:?}"
+        ))),
+        None => Err(Error::Config(format!(
+            "invalid run handler field '{key}': missing value"
+        ))),
+    }
 }
 
 struct HandlerRegistry;
@@ -316,8 +403,7 @@ impl HandlerRegistry {
             .extension()
             .and_then(|value| value.to_str())
             .ok_or_else(|| Error::Config(format!("unknown file type: '{}'", source.display())))?;
-        let registry: HandlerFile = serde_yaml::from_str(include_str!("handlers.yaml"))
-            .map_err(|error| Error::Config(format!("invalid run handler registry: {error}")))?;
+        let registry = HandlerFile::parse_registry()?;
         registry
             .handlers
             .into_iter()

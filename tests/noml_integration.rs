@@ -81,3 +81,30 @@ fn loads_the_nox_command_rules_noml_file() {
         _ => panic!("expected a ruleset"),
     }
 }
+
+#[test]
+fn loads_the_run_handler_registry_noml_file() {
+    let parsed = parse(include_str!("../src/run/handlers.noml"))
+        .expect("run handler registry should parse");
+    match parsed {
+        Value::Ruleset(ruleset) => {
+            assert_eq!(ruleset.name, "handlers");
+            assert!(!ruleset.entries.is_empty());
+            assert!(
+                ruleset
+                    .entries
+                    .iter()
+                    .any(|entry| entry.type_name == "handler" && entry.name == "Python")
+            );
+            assert!(
+                ruleset.entries.iter().any(|entry| {
+                    entry.type_name == "handler"
+                        && entry.properties.get("language").is_some_and(|value| {
+                            matches!(value, Value::String(text) if text == "Python")
+                        })
+                })
+            );
+        }
+        _ => panic!("expected ruleset root"),
+    }
+}

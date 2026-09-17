@@ -1,0 +1,130 @@
+ruleset "handlers" {
+    handler: FSharp {
+        language: "F#"
+        dependency: ".NET SDK/runtime with F# Interactive (dotnet fsi)"
+        mode: runtime
+        extensions: ["fsx"]
+        tools: ["dotnet"]
+        arguments: ["fsi"]
+    },
+    handler: Python {
+        language: "Python"
+        dependency: "Python"
+        mode: runtime
+        extensions: ["py"]
+        tools: ["python3", "python"]
+        arguments: []
+    },
+    handler: JavaScript {
+        language: "JavaScript"
+        dependency: "Node.js"
+        mode: runtime
+        extensions: ["js", "jsx", "mjs"]
+        tools: ["node"]
+        arguments: []
+    },
+    handler: Ruby {
+        language: "Ruby"
+        dependency: "Ruby"
+        mode: runtime
+        extensions: ["rb"]
+        tools: ["ruby"]
+        arguments: []
+    },
+    handler: C {
+        language: "C"
+        dependency: "a C compiler (cc, clang, or gcc)"
+        mode: compile
+        extensions: ["c"]
+        tools: ["cc", "clang", "gcc"]
+        arguments: ["{source}", "-o", "{output}"]
+    },
+    handler: Cpp {
+        language: "C++"
+        dependency: "a C++ compiler (c++, clang++, or g++)"
+        mode: compile
+        extensions: ["cc", "cpp", "cxx"]
+        tools: ["c++", "clang++", "g++"]
+        arguments: ["{source}", "-o", "{output}"]
+    },
+    handler: Rust {
+        language: "Rust"
+        dependency: "rustc"
+        mode: unsupported
+        extensions: ["rs"]
+        tools: ["rustc"]
+        arguments: ["{source}", "-o", "{output}"]
+    },
+    handler: Haskell {
+        language: "Haskell"
+        dependency: "GHC"
+        mode: compile
+        extensions: ["hs", "lhs"]
+        tools: ["ghc"]
+        arguments: ["{source}", "-o", "{output}"]
+    },
+    handler: D {
+        language: "D"
+        dependency: "a D compiler"
+        mode: compile
+        extensions: ["d"]
+        tools: ["ldc2", "dmd", "gdc"]
+        arguments: ["{source}", "-of={output}"]
+    },
+    handler: Go {
+        language: "Go"
+        dependency: "the Go toolchain"
+        mode: unsupported
+        extensions: ["go"]
+        tools: ["go"]
+        arguments: ["build", "-o", "{output}", "{source}"]
+    },
+    handler: Java {
+        language: "Java"
+        dependency: "the Java runtime and compiler"
+        mode: unsupported
+        extensions: ["java"]
+        tools: ["java", "javac"]
+        arguments: []
+    },
+    handler: CSharp {
+        language: "C#"
+        dependency: "a C# compiler/runtime"
+        mode: unsupported
+        extensions: ["cs"]
+        tools: ["dotnet", "csc", "mcs"]
+        arguments: []
+    },
+    handler: Swift {
+        language: "Swift"
+        dependency: "swiftc"
+        mode: unsupported
+        extensions: ["swift"]
+        tools: ["swiftc"]
+        arguments: ["{source}", "-o", "{output}"]
+    },
+    handler: Zig {
+        language: "Zig"
+        dependency: "zig"
+        mode: unsupported
+        extensions: ["zig"]
+        tools: ["zig"]
+        arguments: ["build-exe", "{source}", "-femit-bin={output}"]
+    },
+    handler: TypeScript {
+        language: "TypeScript"
+        dependency: "a TypeScript runtime/compiler"
+        mode: unsupported
+        extensions: ["ts", "tsx"]
+        tools: ["tsx", "ts-node", "tsc"]
+        arguments: ["{source}"]
+    },
+    handler: Kotlin {
+        language: "Kotlin"
+        dependency: "the Kotlin runtime/compiler"
+        mode: unsupported
+        extensions: ["kt", "kts"]
+        tools: ["kotlinc", "kotlin"]
+        arguments: []
+    }
+}
