@@ -178,14 +178,5 @@ ruleset "commands" {
             requires_initialization: false
             requires_project: true
         }
-    },
-    command: doctor {
-        aliases: []
-        description: ["Project analsys, not to be confused with nox stat"]
-        rules: {
-            accepts_files_as_input: false
-            requires_initialization: true
-            requires_project: true
-        }
     }
 }
