@@ -1,53 +1,47 @@
-Todo List
-===============================
+TODO
+====
+
+This file tracks work that is still outstanding. Completed work is recorded in
+``ROADMAP.rst`` with the commit that implemented it.
 
 Additions
 ---------
 
-* Improve the partially implemented "Run" feature
-	* Already implemented:
-		* `nox run [PATH|TARGET] [-- ARGS...]` can run the current project, a named
-		  executable target, or a source file.
-		* Runtime handlers exist for F# scripts, Python, JavaScript, and Ruby.
-		* C, C++, and D source files are compiled to a temporary executable, run,
-		  and cleaned up automatically.
-		* Program arguments and child exit codes are forwarded by the command.
+* Improve the ``Run`` feature
 
-	* Remaining improvements:
-		* Implement the registered but currently unsupported handlers for Rust, Go,
-		  Java, C#, Swift, Zig, TypeScript, and Kotlin, or remove handlers until
-		  their execution behavior is supported.
-		* Add integration tests for project runs, named target selection, runtime
-		  handlers, compile-and-run handlers, forwarded arguments, non-zero exit
-		  codes, missing dependencies, and temporary-artifact cleanup.
-		* Improve project-target selection so projects with multiple executable
-		  targets can declare an explicit default instead of relying on the first
-		  executable target.
-		* Make run behavior more configurable for build directory, configuration,
-		  environment variables, working directory, and target-specific run options.
-		* Improve diagnostics for missing setup state, unsupported file types,
-		  compiler failures, runtime failures, and signal-terminated processes.
-		* Review temporary compilation behavior for platform-specific compiler
-		  flags, linker dependencies, source-relative includes, and parallel runs.
+	* Extend integration coverage for project runs, named target selection,
+	  runtime and compile-and-run handlers, forwarded arguments, non-zero exit
+	  codes, missing dependencies, and temporary-artifact cleanup.
+	* Let projects declare an explicit default executable instead of relying on
+	  the first executable target.
+	* Make build directory, configuration, environment, working directory, and
+	  target-specific run options configurable.
+	* Improve diagnostics for missing setup state, unsupported file types,
+	  compiler failures, runtime failures, and signal-terminated processes.
+	* Review temporary compilation for platform-specific flags, linker
+	  dependencies, source-relative includes, and parallel runs.
 
-* Extend the partially implemented variables and let-bindings feature
-	* Implemented: project-level immutable `let NAME = VALUE` declarations for
-	  strings, booleans, and lists.
-	* Implemented: references from project metadata and target properties including
-	  sources, dependencies, include directories, defines, compiler/linker flags,
-	  and install settings.
-	* Implemented: duplicate-binding diagnostics and type checks when a binding is
-	  used as a scalar, boolean, or list.
+The following parts of the feature are implemented: project, target, and
+standalone-source execution; F#, Python, JavaScript, Ruby, C, C++, and D run
+handlers; argument and child-exit-code forwarding; temporary executable
+cleanup; and run-handler loading from NOML rules.
 
-	* Add target-local bindings and define whether shadowing is allowed. Project
-	  bindings should remain visible to targets, while target bindings must not leak
-	  to sibling targets.
-	* Add explicit environment-variable access and command-line overrides only if
-	  their precedence and reproducibility guarantees are documented.
+* Extend variables and ``let`` bindings
+
+	* Add target-local bindings and define whether shadowing is allowed.
+	* Add explicit environment-variable access and command-line overrides only
+	  after documenting precedence and reproducibility guarantees.
 	* Add string interpolation, forward references, cycle detection, and
 	  source-aware diagnostics if the language needs those capabilities.
 	* Expand parser tests for metadata references, glob arguments, nested lists,
 	  invalid types, undefined names, and binding scope.
+
+Project-level immutable ``let NAME = VALUE`` declarations are implemented for
+strings, booleans, and lists. References work in project metadata and target
+properties, including sources, dependencies, include directories, defines,
+compiler/linker flags, and install settings. Duplicate-binding diagnostics and
+scalar, boolean, and list type checks are also implemented.
+
 
 * Add a bounded expression language for computed configuration
 	* Support numeric literals and arithmetic operators (`+`, `-`, `*`, `/`, `%`) with
