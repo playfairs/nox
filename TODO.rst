@@ -8,7 +8,6 @@ Additions
 ---------
 
 * Improve the ``Run`` feature
-
 	* Extend integration coverage for project runs, named target selection,
 	  runtime and compile-and-run handlers, forwarded arguments, non-zero exit
 	  codes, missing dependencies, and temporary-artifact cleanup.
@@ -27,7 +26,6 @@ handlers; argument and child-exit-code forwarding; temporary executable
 cleanup; and run-handler loading from NOML rules.
 
 * Extend variables and ``let`` bindings
-
 	* Add target-local bindings and define whether shadowing is allowed.
 	* Add explicit environment-variable access and command-line overrides only
 	  after documenting precedence and reproducibility guarantees.
