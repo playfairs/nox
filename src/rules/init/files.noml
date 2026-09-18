@@ -1,104 +1,104 @@
 ruleset "files" {
     file: "Cargo.toml" {
         build_system: Cargo
-        languages: ["Rust"]
         project_name: toml_name
         project_type: null
+        languages: ["Rust"]
     },
     file: "Package.swift" {
         build_system: SwiftPM
-        languages: ["Swift"]
         project_name: null
         project_type: null
+        languages: ["Swift"]
     },
     file: "package.json" {
         build_system: npm
-        languages: ["JavaScript"]
         project_name: json_name
         project_type: null
+        languages: ["JavaScript"]
     },
     file: "tsconfig.json" {
         build_system: null
-        languages: ["TypeScript"]
         project_name: null
         project_type: null
+        languages: ["TypeScript"]
     },
     file: "pyproject.toml" {
         build_system: pyproject
-        languages: ["Python"]
         project_name: null
         project_type: null
+        languages: ["Python"]
     },
     file: "CMakeLists.txt" {
         build_system: CMake
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: "meson.build" {
         build_system: Meson
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: Makefile {
         build_system: Make
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: Justfile {
         build_system: Just
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: "build.zig" {
         build_system: Zig
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: "go.mod" {
         build_system: Go
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: "flake.nix" {
         build_system: Nix
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: "rustfmt.toml" {
         build_system: null
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: ".clang-format" {
         build_system: null
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: ".prettierrc" {
         build_system: null
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: ".prettierrc.json" {
         build_system: null
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     },
     file: ".swift-format" {
         build_system: null
-        languages: []
         project_name: null
         project_type: null
+        languages: []
     }
 }

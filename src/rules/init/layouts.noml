@@ -1,67 +1,67 @@
 ruleset "layouts" {
     layout: src {
         directory: src
-        priority: 100
         role: source
+        priority: 100
     },
     layout: source {
         directory: source
-        priority: 90
         role: source
+        priority: 90
     },
     layout: app {
         directory: app
-        priority: 80
         role: source
+        priority: 80
     },
     layout: lib {
         directory: lib
-        priority: 70
         role: source
+        priority: 70
     },
     layout: include {
         directory: include
-        priority: 100
         role: include
+        priority: 100
     },
     layout: includes {
         directory: includes
-        priority: 90
         role: include
+        priority: 90
     },
     layout: inc {
         directory: inc
-        priority: 80
         role: include
+        priority: 80
     },
     layout: headers {
         directory: headers
-        priority: 70
         role: include
+        priority: 70
     },
     layout: public {
         directory: public
-        priority: 60
         role: include
+        priority: 60
     },
     layout: tests {
         directory: tests
-        priority: 100
         role: test
+        priority: 100
     },
     layout: test {
         directory: test
-        priority: 90
         role: test
+        priority: 90
     },
     layout: spec {
         directory: spec
-        priority: 80
         role: test
+        priority: 80
     },
     layout: examples {
         directory: examples
-        priority: 70
         role: example
+        priority: 70
     }
 }

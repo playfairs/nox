@@ -1,7 +1,7 @@
 ruleset "languages" {
     language: Rust {
-        aliases: ["rust"]
         display_name: Rust
+        aliases: ["rust"]
         extensions: ["rs"]
         header_extensions: []
         main_files: ["main.rs"]
@@ -9,8 +9,8 @@ ruleset "languages" {
         target_types: ["executable", "rust_library"]
     },
     language: Haskell {
-        aliases: ["haskell", "hs"]
         display_name: Haskell
+        aliases: ["haskell", "hs"]
         extensions: ["hs", "lhs"]
         header_extensions: []
         main_files: ["Main.hs", "main.hs"]
@@ -18,8 +18,8 @@ ruleset "languages" {
         target_types: ["executable"]
     },
     language: C {
-        aliases: ["c"]
         display_name: C
+        aliases: ["c"]
         extensions: ["c"]
         header_extensions: ["h"]
         main_files: ["main.c"]
@@ -27,8 +27,8 @@ ruleset "languages" {
         target_types: ["executable", "static_library", "shared_library"]
     },
     language: Cpp {
-        aliases: ["cpp", "c++", "cxx"]
         display_name: "C++"
+        aliases: ["cpp", "c++", "cxx"]
         extensions: ["cc", "cpp", "cxx"]
         header_extensions: ["hh", "hpp", "hxx"]
         main_files: ["main.cpp", "main.cc", "main.cxx"]
@@ -36,8 +36,8 @@ ruleset "languages" {
         target_types: ["executable", "static_library", "shared_library"]
     },
     language: D {
-        aliases: ["d"]
         display_name: D
+        aliases: ["d"]
         extensions: ["d"]
         header_extensions: []
         main_files: ["main.d"]
@@ -45,8 +45,8 @@ ruleset "languages" {
         target_types: ["executable"]
     },
     language: Swift {
-        aliases: ["swift"]
         display_name: Swift
+        aliases: ["swift"]
         extensions: ["swift"]
         header_extensions: []
         main_files: ["main.swift"]
@@ -54,8 +54,8 @@ ruleset "languages" {
         target_types: ["executable"]
     },
     language: FSharp {
-        aliases: ["fsharp", "f#"]
         display_name: "F#"
+        aliases: ["fsharp", "f#"]
         extensions: ["fs", "fsx"]
         header_extensions: []
         main_files: ["Program.fs", "main.fsx"]
@@ -63,8 +63,8 @@ ruleset "languages" {
         target_types: ["executable"]
     },
     language: JavaScript {
-        aliases: ["javascript", "js"]
         display_name: JavaScript
+        aliases: ["javascript", "js"]
         extensions: ["js", "jsx", "mjs"]
         header_extensions: []
         main_files: ["index.js", "main.js"]
@@ -72,8 +72,8 @@ ruleset "languages" {
         target_types: ["executable"]
     },
     language: TypeScript {
-        aliases: ["typescript", "ts"]
         display_name: TypeScript
+        aliases: ["typescript", "ts"]
         extensions: ["ts", "tsx"]
         header_extensions: []
         main_files: ["index.ts", "main.ts"]
@@ -81,8 +81,8 @@ ruleset "languages" {
         target_types: ["executable"]
     },
     language: Python {
-        aliases: ["python", "py"]
         display_name: Python
+        aliases: ["python", "py"]
         extensions: ["py"]
         header_extensions: []
         main_files: ["main.py", "__main__.py"]

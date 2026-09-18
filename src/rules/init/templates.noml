@@ -1,47 +1,47 @@
 ruleset "templates" {
     template: rust_manifest {
-        languages: ["Rust"]
         optional: true
         path: "Cargo.toml"
+        languages: ["Rust"]
     },
     template: javascript_manifest {
-        languages: ["JavaScript", "TypeScript"]
         optional: true
         path: "package.json"
+        languages: ["JavaScript", "TypeScript"]
     },
     template: typescript_config {
-        languages: ["TypeScript"]
         optional: true
         path: "tsconfig.json"
+        languages: ["TypeScript"]
     },
     template: swift_manifest {
-        languages: ["Swift"]
         optional: true
         path: "Package.swift"
+        languages: ["Swift"]
     },
     template: python_manifest {
-        languages: ["Python"]
         optional: true
         path: "pyproject.toml"
+        languages: ["Python"]
     },
     template: noxfile {
-        languages: []
         optional: true
         path: noxfile
+        languages: []
     },
     template: flake {
-        languages: []
         optional: true
         path: "flake.nix"
+        languages: []
     },
     template: readme {
-        languages: []
         optional: true
         path: "README.md"
+        languages: []
     },
     template: gitignore {
-        languages: []
         optional: true
         path: ".gitignore"
+        languages: []
     }
 }
