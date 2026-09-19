@@ -154,6 +154,25 @@ dependencies = ["zlib", "openssl"]
 
 These are metadata today. Build-graph dependencies between declared Nox targets belong on a target with `dependencies = [...]` and are resolved by Nox.
 
+### `extra.env { KEY = VALUE, ... }`
+
+Optional project-level environment variables that Nox applies to itself before it runs build, setup, and task commands.
+
+```text
+project "example" {
+    extra.env {
+        RUST_BACKTRACE = "full"
+        CARGO_TERM_COLOR = "always"
+    }
+
+    executable "app" {
+        sources = ["src/main.rs"]
+    }
+}
+```
+
+This is useful for enabling toolchain tracing or project-local runtime defaults without modifying the shell environment outside of Nox.
+
 ## Target kinds
 
 Every target must have at least one source.
