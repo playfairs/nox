@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 pub struct CommandRule {
     pub command: String,
     pub aliases: Vec<String>,
+    pub description: String,
     pub requires_project: bool,
 }
 
@@ -52,6 +53,13 @@ impl BaseRules {
 
     pub fn command(&self, name: &str) -> Option<&CommandRule> {
         self.commands.iter().find(|rule| rule.command == name)
+    }
+
+    pub fn description(&self, name: &str) -> Option<&str> {
+        self.commands
+            .iter()
+            .find(|rule| rule.command == name || rule.aliases.iter().any(|alias| alias == name))
+            .map(|rule| rule.description.as_str())
     }
 
     pub fn requires_initialization(&self, command: &str) -> bool {
@@ -106,6 +114,7 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
                 };
                 let command = field_string(&fields, "command")?;
                 let aliases = string_list(&fields, "aliases")?;
+                let description = description_string(&fields)?;
                 let rules = match fields.get("rules") {
                     Some(Value::Object(rules)) => rules,
                     Some(other) => {
@@ -121,6 +130,7 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
                 command_entries.push((
                     command,
                     aliases,
+                    description,
                     requires_project,
                     requires_init,
                     accepts_input,
@@ -129,12 +139,13 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
             let mut commands = Vec::new();
             let mut requires_initialization = Vec::new();
             let mut accepts_files_as_input = Vec::new();
-            for (command, aliases, requires_project, requires_init, accepts_input) in
+            for (command, aliases, description, requires_project, requires_init, accepts_input) in
                 command_entries
             {
                 commands.push(CommandRule {
                     command: command.clone(),
                     aliases,
+                    description,
                     requires_project,
                 });
                 if requires_init {
@@ -178,6 +189,18 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
             Some(_) => return Err(format!("command '{command}' aliases must be an array")),
             None => Vec::new(),
         };
+        let description = match entry.properties.get("description") {
+            Some(Value::Array(values)) => values
+                .iter()
+                .map(|value| match value {
+                    Value::String(text) => Ok(text.clone()),
+                    _ => Err(format!("command '{command}' description must be strings")),
+                })
+                .collect::<Result<Vec<_>, String>>()?
+                .join(" "),
+            Some(_) => return Err(format!("command '{command}' description must be an array")),
+            None => String::new(),
+        };
 
         let rules = match entry.properties.get("rules") {
             Some(Value::Object(rules)) => rules,
@@ -196,6 +219,7 @@ fn parse_commands(contents: &str) -> Result<CommandRules, String> {
         commands.push(CommandRule {
             command: command.clone(),
             aliases,
+            description: description.clone(),
             requires_project,
         });
 
@@ -293,6 +317,21 @@ fn string_list(fields: &BTreeMap<String, Value>, name: &str) -> Result<Vec<Strin
             .collect(),
         Some(_) => Err(format!("field '{name}' must be an array of strings")),
         None => Ok(Vec::new()),
+    }
+}
+
+fn description_string(fields: &BTreeMap<String, Value>) -> Result<String, String> {
+    match fields.get("description") {
+        Some(Value::Array(values)) => values
+            .iter()
+            .map(|value| match value {
+                Value::String(text) => Ok(text.clone()),
+                _ => Err("field 'description' must contain only strings".to_string()),
+            })
+            .collect::<Result<Vec<_>, String>>()
+            .map(|items| items.join(" ")),
+        Some(_) => Err("field 'description' must be an array of strings".to_string()),
+        None => Ok(String::new()),
     }
 }
 
