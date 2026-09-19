@@ -187,9 +187,23 @@ impl<'a> Parser<'a> {
         let mut authors = Vec::new();
         let mut maintainers = Vec::new();
         let mut targets = Vec::new();
+        let mut extra_env = HashMap::new();
         while !self.take_symbol('}') {
             match self.word()?.as_str() {
                 "let" => self.binding()?,
+                "extra" => {
+                    self.expect_symbol('.')?;
+                    match self.word()?.as_str() {
+                        "env" => {
+                            extra_env.extend(self.environment_block()?);
+                        }
+                        unknown => {
+                            return Err(Error::Parse(format!(
+                                "unknown project member 'extra.{unknown}'"
+                            )));
+                        }
+                    }
+                }
                 "version" => {
                     self.expect_symbol('=')?;
                     version = Some(self.string_or_file("version")?);
@@ -275,7 +289,20 @@ impl<'a> Parser<'a> {
             maintainers,
             targets,
             settings: self.settings.clone(),
+            extra_env,
         })
+    }
+
+    fn environment_block(&mut self) -> Result<HashMap<String, String>> {
+        self.expect_symbol('{')?;
+        let mut values = HashMap::new();
+        while !self.take_symbol('}') {
+            let name = self.string_or_word()?;
+            self.expect_symbol('=')?;
+            let value = self.string_or_word()?;
+            values.insert(name, value);
+        }
+        Ok(values)
     }
 
     fn setting(&mut self) -> Result<()> {
