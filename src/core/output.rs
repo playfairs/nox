@@ -86,7 +86,7 @@ pub fn path_value(key: impl Display, value: impl Display) {
     line(format!(
         "{} {}",
         colorize(&format!("{BOLD}{BLUE}"), format!("{key}:")),
-        colorize(CYAN, value)
+        colorize(CYAN, format_path(value))
     ));
 }
 
@@ -135,4 +135,20 @@ pub fn error(message: impl Display) {
             message.to_string()
         }
     );
+}
+
+fn format_path(value: impl Display) -> String {
+    let value = value.to_string();
+    format!("'{}'", value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_path;
+
+    #[test]
+    fn paths_are_wrapped_in_single_quotes() {
+        assert_eq!(format_path("/tmp/demo path"), "'/tmp/demo path'");
+        assert_eq!(format_path("build"), "'build'");
+    }
 }
