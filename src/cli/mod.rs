@@ -69,7 +69,14 @@ pub fn run() -> Result<()> {
                     .map_err(|_| Error::Config("invalid job count".to_string()))?
             }
             "--release" => configuration = "release".to_string(),
-            "--debug" => configuration = "debug".to_string(),
+            "--debug" => {
+                configuration = "debug".to_string();
+                if matches!(command.as_str(), "build" | "compile" | "run") {
+                    unsafe {
+                        std::env::set_var("RUST_BACKTRACE", "full");
+                    }
+                }
+            }
             "--reconfigure" => reconfigure = true,
             "-C" | "--build-dir" => {
                 build_dir_explicit = true;
@@ -294,6 +301,8 @@ fn run_with_project(
     run_arguments: Vec<String>,
     requires_initialization: bool,
 ) -> Result<()> {
+    let project = parser::parse_file(&root.join("nox.build"))?;
+    apply_project_environment(&project);
     if !build_dir_explicit && !matches!(command, "setup" | "configure") {
         if let Some(configured_build_dir) = configured_build_dir(&root)? {
             build_dir = configured_build_dir;
@@ -305,11 +314,15 @@ fn run_with_project(
         root.join(build_dir)
     };
     if requires_initialization && !BuildState::path(&state_dir).is_file() {
-        return Err(Error::Config(format!(
-            "'{}' is not configured; run nox setup {}",
-            state_dir.display(),
-            state_dir.display()
-        )));
+        if project_config_path(&root).is_file() {
+            setup(&root, &state_dir, &configuration, compile_flags.clone())?;
+        } else {
+            return Err(Error::Config(format!(
+                "'{}' is not configured; run nox setup {}",
+                state_dir.display(),
+                state_dir.display()
+            )));
+        }
     }
     match command {
         "setup" | "configure" => {
@@ -329,11 +342,9 @@ fn run_with_project(
             if state_dir.exists() {
                 fs::remove_dir_all(state_dir)?;
             }
-            if !build_dir_explicit {
-                remove_project_config(&root)?;
-            }
             Ok(())
         }
+        "doctor" | "doc" => doctor(&root, &state_dir, positional.first().map(String::as_str)),
         "rebuild" => {
             if state_dir.exists() {
                 fs::remove_dir_all(&state_dir)?;
@@ -363,6 +374,7 @@ fn run_with_project(
             output::action("validated", project.name);
             Ok(())
         }
+        "env" => env(&root),
         "status" | "stat" => status(&state_dir, positional.first().map(String::as_str)),
         "riders" => unreachable!(),
         "graph" => {
@@ -436,6 +448,14 @@ fn run_with_project(
             version_files(&root)?,
         ),
         value => Err(Error::Config(format!("unknown command '{value}'"))),
+    }
+}
+
+fn apply_project_environment(project: &crate::core::model::Project) {
+    for (name, value) in &project.extra_env {
+        unsafe {
+            std::env::set_var(name, value);
+        }
     }
 }
 
@@ -621,25 +641,41 @@ fn setup(
 }
 
 fn project_config_path(root: &Path) -> PathBuf {
+    root.join("nox.state")
+}
+
+fn legacy_project_config_path(root: &Path) -> PathBuf {
     root.join("nox.config")
 }
 
 fn configured_build_dir(root: &Path) -> Result<Option<PathBuf>> {
-    let path = project_config_path(root);
-    if !path.is_file() {
+    let state_path = project_config_path(root);
+    let legacy_path = legacy_project_config_path(root);
+    let path = if state_path.is_file() {
+        state_path
+    } else if legacy_path.is_file() {
+        legacy_path
+    } else {
         return Ok(None);
-    }
+    };
+
     let text = fs::read_to_string(&path)?;
     let value = text
-        .strip_prefix("build_dir=")
-        .ok_or_else(|| Error::Config("invalid nox.config".to_string()))?
-        .trim();
-    if value.is_empty() {
+        .lines()
+        .find_map(|line| line.strip_prefix("build_dir="))
+        .ok_or_else(|| Error::Config(format!("invalid {}", path.file_name().unwrap_or_default().to_string_lossy())))?;
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
         return Err(Error::Config(
-            "nox.config has no build directory".to_string(),
+            format!("{} has no build directory", path.file_name().unwrap_or_default().to_string_lossy()),
         ));
     }
-    let build_dir = PathBuf::from(value);
+    let unquoted = trimmed
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .map(|value| value.replace("\\\"", "\""))
+        .unwrap_or_else(|| trimmed.to_string());
+    let build_dir = PathBuf::from(unquoted);
     Ok(Some(if build_dir.is_absolute() {
         build_dir
     } else {
@@ -649,17 +685,17 @@ fn configured_build_dir(root: &Path) -> Result<Option<PathBuf>> {
 
 fn write_project_config(root: &Path, build_dir: &Path) -> Result<()> {
     let configured_path = build_dir.strip_prefix(root).unwrap_or(build_dir);
+    let quoted_root = format!("\"{}\"", root.display());
+    let quoted_build = format!("\"{}\"", configured_path.display());
     fs::write(
         project_config_path(root),
-        format!("build_dir={}\n", configured_path.display()),
+        format!(
+            "// This file is generated by nox.\n// It is not intended to be manually edited.\nroot={}\nbuild_dir={}\n",
+            quoted_root, quoted_build
+        ),
     )?;
-    Ok(())
-}
-
-fn remove_project_config(root: &Path) -> Result<()> {
-    let path = project_config_path(root);
-    if path.exists() {
-        fs::remove_file(path)?;
+    if legacy_project_config_path(root).exists() {
+        fs::remove_file(legacy_project_config_path(root))?;
     }
     Ok(())
 }
@@ -716,6 +752,53 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
             fs::remove_file(&destination)?;
             output::action("uninstalled", destination.display());
         }
+    }
+    Ok(())
+}
+
+fn doctor(root: &Path, build_dir: &Path, requested_project: Option<&str>) -> Result<()> {
+    output::key_value("command", "doctor");
+    output::path_value("root", root.display());
+    output::path_value("build directory", build_dir.display());
+    output::path_value("nox.build", root.join("nox.build").display());
+    output::path_value("nox.state", project_config_path(root).display());
+
+    match configured_build_dir(root)? {
+        Some(configured_dir) => output::path_value("configured build dir", configured_dir.display()),
+        None => output::warning("no project build directory is configured in nox.state"),
+    }
+
+    if !BuildState::path(build_dir).exists() {
+        output::warning(format!("not configured: {}", build_dir.display()));
+        return Ok(());
+    }
+
+    let state = BuildState::load(build_dir)?;
+    let projects = parser::parse_file_projects(&state.root.join("nox.build"))?;
+    let Some(project) = select_status_project(&projects, requested_project)? else {
+        return Ok(());
+    };
+
+    let project_label = project.version.as_deref().map_or_else(
+        || project.name.clone(),
+        |version| format!("{} {version}", project.name),
+    );
+    output::key_value("project", project_label);
+    output::key_value("configuration", &state.configuration);
+    output::key_value("compiler", &state.compiler);
+    output::key_value("linker", &state.linker);
+    output::key_value("archiver", &state.archiver);
+    output::key_value("compile flags", format!("{:?}", state.compile_flags));
+    output::key_value("targets", project.targets.len());
+    Ok(())
+}
+
+fn env(root: &Path) -> Result<()> {
+    let project = parser::parse_file(&root.join("nox.build"))?;
+    let mut entries: Vec<_> = project.extra_env.iter().collect();
+    entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+    for (name, value) in entries {
+        println!("{}={}", name, value);
     }
     Ok(())
 }
@@ -863,7 +946,7 @@ fn default_install_prefix() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{bump_version, standalone_file, version_files};
+    use super::{bump_version, run_with_project, standalone_file, version_files};
     use crate::rules::base::BaseRules;
     use std::fs;
 
@@ -874,6 +957,63 @@ mod tests {
         assert_eq!(rules.command_name("build"), Some("build"));
         assert_eq!(rules.command_name("r"), Some("run"));
         assert_eq!(rules.command_name("run"), Some("run"));
+        assert_eq!(rules.command_name("i"), Some("install"));
+        assert_eq!(rules.command_name("install"), Some("install"));
+        assert_eq!(rules.command_name("doc"), Some("doctor"));
+        assert_eq!(rules.command_name("env"), Some("env"));
+        assert_eq!(rules.command_name("debug"), None);
+    }
+
+    #[test]
+    fn clean_keeps_project_state() {
+        let root = std::env::temp_dir().join(format!("nox-clean-state-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create temp project root");
+        fs::write(
+            root.join("nox.build"),
+            "project \"fixture\" {\n    executable \"fixture\" { sources = [\"main.c\"] }\n}\n",
+        )
+        .expect("write nox.build");
+        fs::write(root.join("nox.state"), "build_dir=\"build\"\n").expect("write nox.state");
+
+        run_with_project(
+            "clean",
+            root.clone(),
+            std::path::PathBuf::from("build"),
+            false,
+            "debug".to_string(),
+            std::path::PathBuf::from("/usr/local"),
+            false,
+            Vec::new(),
+            1,
+            Vec::new(),
+            Vec::new(),
+            false,
+        )
+        .expect("clean should succeed");
+
+        assert!(root.join("nox.state").is_file(), "nox.state should remain after clean");
+        assert!(!root.join("build").exists(), "build directory should be removed during clean");
+        fs::remove_dir_all(root).expect("cleanup test directory");
+    }
+
+    #[test]
+    fn reads_quoted_build_dir_from_project_state() {
+        let root = std::env::temp_dir().join(format!("nox-state-quoted-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create temp project root");
+        let quoted_dir = root.join("custom build dir");
+        fs::write(
+            root.join("nox.state"),
+            format!("build_dir=\"{}\"\n", quoted_dir.display()),
+        )
+        .expect("write quoted build dir");
+
+        assert_eq!(
+            super::configured_build_dir(&root).expect("read configured build dir"),
+            Some(quoted_dir)
+        );
+        fs::remove_dir_all(root).expect("cleanup quoted-state directory");
     }
 
     #[test]
