@@ -75,6 +75,7 @@ pub struct Project {
     pub maintainers: Vec<String>,
     pub targets: Vec<Target>,
     pub settings: HashMap<String, Setting>,
+    pub extra_env: HashMap<String, String>,
 }
 
 impl Project {
