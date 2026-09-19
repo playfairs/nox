@@ -3,7 +3,28 @@ use crate::core::output;
 pub fn print(command: &str) {
     let text = match command {
         "" => {
-                "The Nox Build & Automation System\n\nUsage: nox <COMMAND> [OPTIONS]\n\nNox reads nox.build. Typical workflow:\n  nox setup build\n  nox compile -C build\n\nCommands:\n  setup, configure      Configure and detect toolchains\n  compile, build, b     Compile and link configured targets\n  rebuild               Reconfigure and compile from scratch\n  clean                 Remove generated build artifacts\n  install               Build and install marked targets\n  uninstall             Remove installed targets\n  validate              Check nox.build and dependencies\n  status, stat          Show configuration and toolchains\n  riders                List supported language backends\n  targets, list         List declared targets\n  graph                 Show dependency order\n  run, r                Compile and run a target\n  nomlfmt               Format NOML files\n  test                  Run the noxfile test task\n  task                  Run a named noxfile task\n  version               Print the Nox version\n  bump-version, bump    Bump or set the project version\n  help                  Show command-specific help\n\nOptions:\n  -h, --help              Show command help\n  -v, --version           Print the Nox version\n  -C, --build-dir DIR     Select a build directory\n  -j N                    Use N parallel jobs\n  --release               Use release configuration\n  --debug                 Use debug configuration\n  --compile-flag FLAG     Add a compiler flag\n  --reconfigure           Recreate the setup directory\n  --prefix PATH           Select the install prefix\n\nRun 'nox <COMMAND> --help' for details."
+                "The Nox Build & Automation System\n\nUsage: nox <COMMAND> [OPTIONS]\n\nNox reads nox.build. Typical workflow:\n  nox setup build\n  nox compile -C build\n\nCommands:
+  setup, configure      Configure and detect toolchains
+  compile, build, b     Compile and link configured targets
+  rebuild               Reconfigure and compile from scratch
+  clean                 Remove generated build artifacts
+  doctor, doc           Diagnose project setup and build state
+  install, i            Build and install marked targets
+  uninstall             Remove installed targets
+  validate              Check nox.build and dependencies
+  status, stat          Show configuration and toolchains
+  riders                List supported language backends
+  targets, list         List declared targets
+  graph                 Show dependency order
+  run, r                Compile and run a target
+  nomlfmt               Format NOML files
+  test                  Run the noxfile test task
+  task                  Run a named noxfile task
+  version               Print the Nox version
+  bump-version, bump    Bump or set the project version
+  help                  Show command-specific help
+
+Options:\n  -h, --help              Show command help\n  -v, --version           Print the Nox version\n  -C, --build-dir DIR     Select a build directory\n  -j N                    Use N parallel jobs\n  --release               Use release configuration\n  --debug                 Enable full Rust backtraces for run/build failures\n  --compile-flag FLAG     Add a compiler flag\n  --reconfigure           Recreate the setup directory\n  --prefix PATH           Select the install prefix\n\nRun 'nox <COMMAND> --help' for details."
         }
         "setup" | "configure" => {
             "Usage: nox setup [BUILD_DIR] [OPTIONS]\n\nParse and validate nox.build, detect toolchains, and write build state to nox.state. Setup does not compile sources.\n\nThe default directory is build. Use --reconfigure to remove it first.\n\nExamples:\n  nox setup\n  nox setup build --release\n  nox setup build --reconfigure\n\nAliases: nox configure."
@@ -15,10 +36,13 @@ pub fn print(command: &str) {
             "Usage: nox rebuild [OPTIONS]\n\nDelete the selected build directory, configure it again, and compile all targets from scratch. Equivalent to setup --reconfigure followed by compile.\n\nExamples:\n  nox rebuild\n  nox rebuild --release"
         }
         "clean" => {
-            "Usage: nox clean [-C BUILD_DIR]\n\nRemove generated state and artifacts from the selected build directory. Installed files are preserved.\n\nExample:\n  nox clean -C build"
+            "Usage: nox clean [-C BUILD_DIR]\n\nRemove generated state and artifacts from the selected build directory without deleting the root nox.state configuration. Installed files are preserved.\n\nExample:\n  nox clean -C build"
+        }
+        "doctor" | "doc" => {
+            "Usage: nox doctor [-C BUILD_DIR]\n\nInspect the project, selected build directory, loaded configuration, and state files to help diagnose setup issues.\n\nExamples:\n  nox doctor\n  nox doc -C build"
         }
         "install" => {
-            "Usage: nox install [OPTIONS]\n\nConfigure if needed, compile, and install targets marked install = true. Executables go to bin and libraries go to lib under the prefix.\n\nExamples:\n  nox install --release\n  nox install --prefix ~/.local"
+            "Usage: nox install [OPTIONS]\n\nConfigure if needed, compile, and install targets marked install = true. Executables go to bin and libraries go to lib under the prefix.\n\nAliases: nox i.\n\nExamples:\n  nox install --release\n  nox i --prefix ~/.local"
         }
         "uninstall" => {
             "Usage: nox uninstall [--prefix PATH]\n\nRemove installed targets without compiling. The project definition determines which artifacts belong to Nox.\n\nExample:\n  nox uninstall --prefix ~/.local"
