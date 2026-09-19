@@ -199,6 +199,7 @@ mod tests {
             maintainers: vec![],
             targets: vec![executable("app")],
             settings: HashMap::new(),
+            extra_env: HashMap::new(),
         };
 
         assert_eq!(select_target(&project, None).unwrap().name, "app");
@@ -220,6 +221,7 @@ mod tests {
             maintainers: vec![],
             targets: vec![executable("app"), executable("worker")],
             settings: HashMap::new(),
+            extra_env: HashMap::new(),
         };
 
         let error = select_target(&project, None).unwrap_err().to_string();
