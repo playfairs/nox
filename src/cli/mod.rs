@@ -14,6 +14,7 @@ use crate::toolchain::{detection, rider};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod commands;
 mod help;
 
 fn version() -> &'static str {
@@ -344,7 +345,9 @@ fn run_with_project(
             }
             Ok(())
         }
-        "doctor" | "doc" => doctor(&root, &state_dir, positional.first().map(String::as_str)),
+        "doctor" | "doc" => {
+            commands::doctor::run(&root, &state_dir, positional.first().map(String::as_str))
+        }
         "rebuild" => {
             if state_dir.exists() {
                 fs::remove_dir_all(&state_dir)?;
@@ -760,66 +763,7 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
 }
 
 fn doctor(root: &Path, build_dir: &Path, requested_project: Option<&str>) -> Result<()> {
-    output::section("overview");
-    output::key_value("command", "doctor");
-    output::path_value("nox.build", root.join("nox.build").display());
-    output::path_value("nox.state", project_config_path(root).display());
-    match configured_build_dir(root)? {
-        Some(configured_dir) => output::path_value("configured build dir", configured_dir.display()),
-        None => output::warning("no project build directory is configured in nox.state"),
-    }
-
-    if !BuildState::path(build_dir).exists() {
-        output::warning(format!("not configured: {}", build_dir.display()));
-        return Ok(());
-    }
-
-    let state = BuildState::load(build_dir)?;
-    let projects = parser::parse_file_projects(&state.root.join("nox.build"))?;
-    let Some(project) = select_status_project(&projects, requested_project)? else {
-        return Ok(());
-    };
-
-    let project_label = project.version.as_deref().map_or_else(
-        || project.name.clone(),
-        |version| format!("{} {version}", project.name),
-    );
-
-    output::blank_line();
-    output::section("project");
-    output::key_value("project", project_label);
-    if !project.description.is_empty() {
-        output::key_value("description", &project.description);
-    }
-    if !project.license.is_empty() {
-        output::key_value("license", &project.license);
-    }
-    if let Some(repository) = &project.repository {
-        output::key_value("repository", repository);
-    }
-    if let Some(website) = &project.website {
-        output::key_value("website", website);
-    }
-    if !project.authors.is_empty() {
-        output::key_value("authors", project.authors.join(", "));
-    }
-    if !project.maintainers.is_empty() {
-        output::key_value("maintainers", project.maintainers.join(", "));
-    }
-    output::key_value("edition", &project.edition);
-    output::key_value("dependencies", project.dependencies.len());
-
-    output::blank_line();
-    output::section("build");
-    output::path_value("root", state.root.display());
-    output::path_value("build directory", state.build_dir.display());
-    output::key_value("configuration", &state.configuration);
-    output::key_value("compiler", &state.compiler);
-    output::key_value("linker", &state.linker);
-    output::key_value("archiver", &state.archiver);
-    output::key_value("compile flags", format!("{:?}", state.compile_flags));
-    output::key_value("targets", project.targets.len());
-    Ok(())
+    commands::doctor::run(root, build_dir, requested_project)
 }
 
 fn env(root: &Path) -> Result<()> {
@@ -833,77 +777,8 @@ fn env(root: &Path) -> Result<()> {
 }
 
 #[allow(dead_code)]
-fn status(build_dir: &Path, requested_project: Option<&str>) -> Result<()> {
-    if !BuildState::path(build_dir).exists() {
-        output::warning(format!("not configured: {}", build_dir.display()));
-        return Ok(());
-    }
-    let state = BuildState::load(build_dir)?;
-    let projects = parser::parse_file_projects(&state.root.join("nox.build"))?;
-    let Some(project) = select_status_project(&projects, requested_project)? else {
-        return Ok(());
-    };
-    let project_label = project.version.as_deref().map_or_else(
-        || project.name.clone(),
-        |version| format!("{} {version}", project.name),
-    );
-    output::key_value("project", project_label);
-    if !project.description.is_empty() {
-        output::key_value("description", &project.description);
-    }
-    if !project.license.is_empty() {
-        output::key_value("license", &project.license);
-    }
-    if let Some(repository) = &project.repository {
-        output::key_value("repository", repository);
-    }
-    if let Some(website) = &project.website {
-        output::key_value("website", website);
-    }
-    if !project.authors.is_empty() {
-        output::key_value("authors", project.authors.join(", "));
-    }
-    if !project.maintainers.is_empty() {
-        output::key_value("maintainers", project.maintainers.join(", "));
-    }
-    output::key_value("edition", &project.edition);
-    output::key_value("dependencies", project.dependencies.len());
-    output::path_value("root", state.root.display());
-    output::path_value("build directory", state.build_dir.display());
-    output::key_value("configuration", &state.configuration);
-    output::key_value("compiler", &state.compiler);
-    output::key_value("linker", &state.linker);
-    output::key_value("archiver", &state.archiver);
-    output::key_value("compile flags", format!("{:?}", state.compile_flags));
-    output::key_value("targets", project.targets.len());
-    Ok(())
-}
-
-fn select_status_project<'a>(
-    projects: &'a [crate::core::model::Project],
-    requested: Option<&str>,
-) -> Result<Option<&'a crate::core::model::Project>> {
-    if let Some(name) = requested {
-        return projects
-            .iter()
-            .find(|project| project.name == name)
-            .map(Some)
-            .ok_or_else(|| {
-                Error::Config(format!(
-                    "unknown project '{name}'; available projects: {}",
-                    projects
-                        .iter()
-                        .map(|project| project.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ))
-            });
-    }
-    if projects.len() == 1 {
-        return Ok(Some(&projects[0]));
-    }
-    println!("{}", project_selection_message(projects, "doctor"));
-    Ok(None)
+fn status(root: &Path, build_dir: &Path, requested_project: Option<&str>) -> Result<()> {
+    commands::status::run(root, build_dir, requested_project)
 }
 
 fn select_install_project<'a>(
