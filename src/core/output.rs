@@ -33,6 +33,10 @@ fn line(message: String) {
     println!("{message}");
 }
 
+pub fn blank_line() {
+    line(String::new());
+}
+
 pub fn action(action: impl Display, subject: impl Display) {
     line(format!(
         "{} {}",
@@ -71,6 +75,15 @@ pub fn list_item(name: impl Display, description: impl Display) {
         "{}: {}",
         colorize(MAGENTA, name),
         colorize(BLUE, description)
+    ));
+}
+
+pub fn section(title: impl Display) {
+    line(format!(
+        "{} {} {}",
+        colorize(&format!("{BOLD}{CYAN}"), "["),
+        colorize(&format!("{BOLD}{CYAN}"), title),
+        colorize(&format!("{BOLD}{CYAN}"), "]")
     ));
 }
 
