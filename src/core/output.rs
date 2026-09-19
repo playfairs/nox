@@ -8,7 +8,7 @@ const MAGENTA: &str = "\x1b[35m";
 const RED: &str = "\x1b[31m";
 const YELLOW: &str = "\x1b[33m";
 const BOLD: &str = "\x1b[1m";
-const IRIS: &str = "\x1b[38;2;196;167;231m"; // Comes from https://rosepinetheme.com/palette/iris
+const LINK: &str = "\x1b[38;2;196;167;231m"; // #C4A7E7
 const RESET: &str = "\x1b[0m";
 
 fn colorize(color: &str, message: impl Display) -> String {
