@@ -71,8 +71,17 @@ ruleset "commands" {
             requires_project: true
         }
     },
+    command: doctor {
+        aliases: ["doc"]
+        description: ["Diagnose the project setup and build state."]
+        rules: {
+            accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
+        }
+    },
     command: install {
-        aliases: []
+        aliases: ["i"]
         description: ["Install the current project."]
         rules: {
             accepts_files_as_input: false
@@ -92,6 +101,15 @@ ruleset "commands" {
     command: validate {
         aliases: []
         description: ["Validate the current project."]
+        rules: {
+            accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: true
+        }
+    },
+    command: env {
+        aliases: []
+        description: ["Display the active environment for the current project."]
         rules: {
             accepts_files_as_input: false
             requires_initialization: false
