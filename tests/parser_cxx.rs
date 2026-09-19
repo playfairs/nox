@@ -69,6 +69,21 @@ fn parses_project_metadata_fields() {
 }
 
 #[test]
+fn parses_project_extra_environment() {
+    let project = parse(
+        "project \"demo\" { extra.env { RUST_BACKTRACE = \"full\" CARGO_TERM_COLOR = \"always\" } executable \"demo\" { sources = [\"src/main.rs\"] } }",
+        Path::new("."),
+    )
+    .expect("extra.env should parse");
+
+    assert_eq!(project.extra_env.get("RUST_BACKTRACE"), Some(&"full".to_string()));
+    assert_eq!(
+        project.extra_env.get("CARGO_TERM_COLOR"),
+        Some(&"always".to_string())
+    );
+}
+
+#[test]
 fn rejects_unsupported_qualified_executable_language() {
     let error = parse(
         "project \"example\" { executable.unknown \"app\" { sources = [\"main.c\"] } }",
