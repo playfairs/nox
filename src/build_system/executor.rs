@@ -190,13 +190,10 @@ fn build_cargo_target(target: &Target, state: &BuildState, output: &Path) -> Res
         command.arg("--release");
     }
     run(command)?;
-    let built = target_dir
-        .join(&state.configuration)
-        .join(if cfg!(windows) {
-            format!("{}.exe", target.name)
-        } else {
-            target.name.clone()
-        });
+    let built = cargo_artifact_path(&target_dir, target, &state.configuration);
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::copy(&built, output).map_err(|error| {
         Error::Process(format!(
             "Cargo built '{}' but the artifact could not be copied to '{}': {error}",
@@ -205,6 +202,21 @@ fn build_cargo_target(target: &Target, state: &BuildState, output: &Path) -> Res
         ))
     })?;
     Ok(())
+}
+
+fn cargo_artifact_path(target_dir: &Path, target: &Target, configuration: &str) -> PathBuf {
+    let artifact_name = match target.kind {
+        TargetKind::RustLibrary => format!("lib{}.rlib", target.name),
+        TargetKind::Executable { .. } => {
+            if cfg!(windows) {
+                format!("{}.exe", target.name)
+            } else {
+                target.name.clone()
+            }
+        }
+        _ => target.name.clone(),
+    };
+    target_dir.join(configuration).join(artifact_name)
 }
 
 fn build_external_target(
