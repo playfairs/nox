@@ -23,10 +23,23 @@ fn colorize(color: &str, message: impl Display) -> String {
 fn hyperlink(url: &str, text: impl Display) -> String {
     let text = text.to_string();
     if io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none() {
-        format!("\x1b]8;;{url}\x1b\\{BOLD}{IRIS}{text}{RESET}\x1b]8;;\x1b\\")
+        format!("\x1b]8;;{url}\x1b\\{BOLD}{LINK}{text}{RESET}\x1b]8;;\x1b\\")
     } else {
         text
     }
+}
+
+pub fn github_user(username: impl Display) -> String {
+    let username = username.to_string();
+    hyperlink(&format!("https://github.com/{username}"), username)
+}
+
+pub fn github_users(users: &[String]) -> String {
+    users
+        .iter()
+        .map(|user| github_user(user))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn line(message: String) {
