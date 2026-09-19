@@ -11,6 +11,10 @@ project "nox" {
     edition = "1"
     dependencies = []
 
+    extra.env {
+        RUST_BACKTRACE = "full"
+    }
+
     executable.rust "nox" {
         sources = ["src/main.rs"]
         flags = []
