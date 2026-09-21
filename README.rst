@@ -44,6 +44,8 @@ Building with Nix
    nox setup builddir
    nox compile -C builddir
 
+.. note::
+   
    The Nix flake packages the working tree,
    allowing Nox to install itself directly into the development shell.
 
