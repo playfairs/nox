@@ -31,6 +31,23 @@ Build Nox
 
    cargo build --release
 
+
+Building with Nix
+===================
+
+.. note::
+
+   Enter the nix dev shell by running ``nix develop`` then run
+
+.. code-block:: sh
+
+   nox setup builddir
+   nox compile -C builddir
+
+   The Nix flake packages the working tree,
+   allowing Nox to install itself directly into the development shell.
+
+
 Use Nox
 =======
 
