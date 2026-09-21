@@ -23,9 +23,8 @@ troubleshooting.
 Build Nox
 =========
 
-.. note::
 
-   Build Nox. It is a build system. The name does most of the work here.
+Build Nox. It is a build system. The name does most of the work here.
 
 .. code-block:: sh
 
@@ -35,19 +34,17 @@ Build Nox
 Building with Nix
 ===================
 
-.. note::
 
-   Enter the nix dev shell by running ``nix develop`` then run
+Enter the nix dev shell by running ``nix develop`` then run
 
 .. code-block:: sh
 
    nox setup builddir
    nox compile -C builddir
 
-.. note::
-   
-   The Nix flake packages the working tree,
-   allowing Nox to install itself directly into the development shell.
+  
+The Nix flake packages the working tree,
+allowing Nox to install itself directly into the development shell.
 
 
 Use Nox
