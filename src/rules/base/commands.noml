@@ -53,15 +53,6 @@ ruleset "commands" {
             requires_project: true
         }
     },
-    command: gradle {
-        aliases: []
-        description: ["Run Gradle through the project wrapper or installed Gradle."]
-        rules: {
-            accepts_files_as_input: false
-            requires_initialization: false
-            requires_project: false
-        }
-    },
     command: rebuild {
         aliases: []
         description: ["Clean and rebuild the current project."]

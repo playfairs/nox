@@ -77,12 +77,10 @@ fn loads_the_nox_command_rules_noml_file() {
                     .iter()
                     .any(|entry| entry.type_name == "command" && entry.name == "task")
             );
-            assert!(
-                ruleset
-                    .entries
-                    .iter()
-                    .any(|entry| entry.type_name == "command" && entry.name == "gradle")
-            );
+            assert!(!ruleset
+                .entries
+                .iter()
+                .any(|entry| entry.type_name == "command" && entry.name == "gradle"));
         }
         _ => panic!("expected a ruleset"),
     }

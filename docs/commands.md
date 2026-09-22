@@ -60,19 +60,6 @@ Setup does not compile sources.
 
 `nox configure` is an alias for `nox setup`.
 
-## `nox gradle [TASKS|OPTIONS]`
-
-Run Gradle in the current project. Nox uses the checked-in Gradle wrapper when
-available (`gradlew` on Unix-like systems or `gradlew.bat` on Windows), and
-otherwise invokes `gradle` from `PATH`. Arguments are forwarded unchanged, so
-this command works without a `nox.build` file.
-
-```sh
-nox gradle build
-nox gradle test
-nox gradle assemble --offline
-```
-
 ## `nox compile [-C BUILD_DIR]`
 
 Load configured state, construct the target order, compile changed sources, and link targets.
