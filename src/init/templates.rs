@@ -24,6 +24,7 @@ pub fn starter(language: Language, project_type: ProjectType) -> (&'static str, 
         (Language::JavaScript, _) => ("src/index.js", "console.log(\"hello from Nox\");\n"),
         (Language::TypeScript, _) => ("src/index.ts", "console.log(\"hello from Nox\");\n"),
         (Language::Python, _) => ("src/main.py", "print(\"hello from Nox\")\n"),
+        (Language::Kotlin, _) => ("src/main.kt", "fun main() = println(\"hello from Nox\")\n"),
         (Language::FSharp, _) => ("src/main.fsx", "printfn \"hello from Nox\"\n"),
         (Language::Unknown, _) => ("src/main.c", "int main(void) { return 0; }\n"),
     }
@@ -38,6 +39,7 @@ pub fn flake(language: Language, formatter_enabled: bool) -> String {
         Language::JavaScript => "nodejs",
         Language::TypeScript => "nodejs nodePackages.typescript",
         Language::Python => "python3",
+        Language::Kotlin => "kotlin gradle",
         Language::FSharp => "dotnet-sdk",
         Language::Unknown => "clang",
     };

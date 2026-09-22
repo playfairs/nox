@@ -6,6 +6,7 @@ pub fn print(command: &str) {
                 "The Nox Build & Automation System\n\nUsage: nox <COMMAND> [OPTIONS]\n\nNox reads nox.build. Typical workflow:\n  nox setup build\n  nox compile -C build\n\nCommands:
   setup, configure      Configure and detect toolchains
   compile, build, b     Compile and link configured targets
+  gradle                Run Gradle through gradlew or installed Gradle
   rebuild               Reconfigure and compile from scratch
   clean                 Remove generated build artifacts
   doctor, doc           Diagnose project setup and build state
@@ -31,6 +32,9 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
         }
         "build" | "compile" => {
             "Usage: nox compile [-C BUILD_DIR] [OPTIONS]\n\nLoad configured state, compile changed sources, and link targets in dependency order. Run nox setup first.\n\nThis is the explicit form: it points at the build directory you want to use, so it is useful when there are multiple configured build directories or when you want to be explicit.\n\nThe shorter forms are convenience aliases for the default configured build directory:\n  nox build\n  nox b\n\nThese are equivalent to:\n  nox compile -C build\n\nUse -j for parallel compilation and repeat --compile-flag for compiler options.\n\nExamples:\n  nox compile -C build\n  nox compile -C build -j 8\n  nox compile -C build --compile-flag -Wall\n  nox build\n  nox b\n\nAliases: nox build, nox b."
+        }
+        "gradle" => {
+            "Usage: nox gradle [TASKS|OPTIONS]\n\nRun Gradle from the current project. Nox uses gradlew (or gradlew.bat on Windows) when present and otherwise invokes gradle from PATH. Arguments are forwarded unchanged.\n\nExamples:\n  nox gradle build\n  nox gradle test\n  nox gradle assemble --offline"
         }
         "rebuild" => {
             "Usage: nox rebuild [OPTIONS]\n\nDelete the selected build directory, configure it again, and compile all targets from scratch. Equivalent to setup --reconfigure followed by compile.\n\nExamples:\n  nox rebuild\n  nox rebuild --release"

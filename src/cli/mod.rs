@@ -47,6 +47,15 @@ pub fn run() -> Result<()> {
     let mut run_arguments = Vec::new();
     let mut init_options = init::Options::default();
     while let Some(argument) = arguments.next() {
+        if command == "gradle" {
+            if matches!(argument.as_str(), "--help" | "-h") {
+                help_requested = true;
+                break;
+            }
+            positional.push(argument);
+            positional.extend(arguments);
+            break;
+        }
         if command == "run" && argument == "--" {
             run_arguments.extend(arguments);
             break;
@@ -211,6 +220,9 @@ pub fn run() -> Result<()> {
             std::env::current_dir()?.join(path)
         };
         return format_noml(&path);
+    }
+    if command == "gradle" {
+        return crate::build_system::gradle::run(&std::env::current_dir()?, &positional);
     }
     if command_rule.requires_project {
         let root = project_root()?;

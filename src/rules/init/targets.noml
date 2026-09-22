@@ -46,5 +46,9 @@ ruleset "targets" {
     target: executable {
         language: Python
         project_type: Executable
+    },
+    target: executable {
+        language: Kotlin
+        project_type: Executable
     }
 }

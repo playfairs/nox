@@ -350,6 +350,10 @@ impl<'a> Parser<'a> {
             defines: Vec::new(),
             flags: Vec::new(),
             linker_flags: Vec::new(),
+            gradle_tasks: Vec::new(),
+            gradle_options: Vec::new(),
+            gradle_run_tasks: Vec::new(),
+            gradle_run_options: Vec::new(),
             install: false,
         };
         while !self.take_symbol('}') {
@@ -362,13 +366,26 @@ impl<'a> Parser<'a> {
                 "defines" => target.defines = self.strings()?,
                 "flags" => target.flags = self.strings()?,
                 "linker_flags" => target.linker_flags = self.strings()?,
+                "gradle_tasks" | "tasks" => target.gradle_tasks = self.strings()?,
+                "gradle_options" | "options" => target.gradle_options = self.strings()?,
+                "gradle_run_tasks" | "run_tasks" => target.gradle_run_tasks = self.strings()?,
+                "gradle_run_options" | "run_options" => {
+                    target.gradle_run_options = self.strings()?
+                }
                 "install" => target.install = self.boolean()?,
                 unknown => {
                     return Err(Error::Parse(format!("unknown target property '{unknown}'")));
                 }
             }
         }
-        if target.sources.is_empty() {
+        if target.sources.is_empty()
+            && !matches!(
+                target.kind,
+                TargetKind::Executable {
+                    language: Some(TargetLanguage::Gradle)
+                }
+            )
+        {
             return Err(Error::Config(format!(
                 "target '{}' has no sources",
                 target.name

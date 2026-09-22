@@ -37,6 +37,30 @@ fn parses_rust_qualified_executable_target() {
 }
 
 #[test]
+fn parses_kotlin_and_gradle_targets() {
+    let project = parse(
+        "project \"demo\" { executable.kotlin \"app\" { sources = [\"src/main.kt\"] } executable.gradle \"build\" { gradle_tasks = [\"build\"] gradle_options = [\"--offline\"] } }",
+        Path::new("."),
+    )
+    .expect("Kotlin and Gradle targets should parse");
+
+    assert_eq!(
+        project.targets[0].kind,
+        TargetKind::Executable {
+            language: Some(TargetLanguage::Kotlin)
+        }
+    );
+    assert_eq!(
+        project.targets[1].kind,
+        TargetKind::Executable {
+            language: Some(TargetLanguage::Gradle)
+        }
+    );
+    assert_eq!(project.targets[1].gradle_tasks, ["build"]);
+    assert_eq!(project.targets[1].gradle_options, ["--offline"]);
+}
+
+#[test]
 fn parses_multiple_projects() {
     let projects = parse_projects(
         "project \"first\" { executable.rust \"one\" { sources = [\"one.rs\"] } } project \"second\" { executable.rust \"two\" { sources = [\"two.rs\"] } }",

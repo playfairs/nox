@@ -175,7 +175,8 @@ This is useful for enabling toolchain tracing or project-local runtime defaults 
 
 ## Target kinds
 
-Every target must have at least one source.
+Every compiler-backed target must have at least one source. Gradle targets are
+task targets and do not require sources.
 
 ### C executable
 
@@ -266,6 +267,54 @@ rust_library "common" {
 
 Rust targets currently use the first source file and invoke `rustc` directly. They are not Cargo packages and do not yet model Rust crate dependencies.
 
+### Kotlin executable
+
+Use `executable.kotlin` to compile Kotlin sources with the Kotlin Rider:
+
+```text
+executable.kotlin "app" {
+    sources = ["src/main.kt"]
+}
+```
+
+The Kotlin Rider invokes `kotlinc` and produces a runnable JAR.
+
+### Gradle executable
+
+Use `executable.gradle` when Gradle owns the build. The target name is used as
+the default Gradle task, so this is enough to run `gradle build`:
+
+```text
+executable.gradle "build" {}
+```
+
+For a different task or multiple tasks, configure `gradle_tasks`. Gradle
+arguments such as `--offline`, `--stacktrace`, `--info`, and project properties
+belong in `gradle_options`:
+
+```text
+executable.gradle "package" {
+    gradle_tasks = ["clean", "build"]
+    gradle_options = ["--offline", "--stacktrace", "-Pversion=1.0.0"]
+}
+```
+
+Use `gradle_run_tasks` and `gradle_run_options` to define the Gradle lifecycle
+used by `nox run`:
+
+```text
+executable.gradle "app" {
+    gradle_tasks = [":app:build"]
+    gradle_run_tasks = [":app:run"]
+    gradle_options = ["--console=plain"]
+}
+```
+
+Nox runs `gradlew` (or `gradlew.bat` on Windows) from the project root when it
+exists, otherwise it runs `gradle` from `PATH`. `tasks` and `options` are
+accepted as shorter aliases for `gradle_tasks` and `gradle_options`, while
+`run_tasks` and `run_options` alias the corresponding run properties.
+
 ## Target properties
 
 ### `sources`
@@ -332,6 +381,30 @@ Additional linker flags for C/C++ shared libraries and executables:
 ```text
 linker_flags = ["-pthread"]
 ```
+
+### `gradle_tasks` / `tasks`
+
+Gradle tasks to execute for an `executable.gradle` target. If omitted, the
+target name is used as one task.
+
+### `gradle_options` / `options`
+
+Arguments forwarded to Gradle for an `executable.gradle` target:
+
+```text
+gradle_options = ["--offline", "--no-daemon"]
+```
+
+### `gradle_run_tasks` / `run_tasks`
+
+Gradle tasks to execute for an `executable.gradle` target when running with
+`nox run`. If omitted, the target name is used as the project path followed by
+`:run`.
+
+### `gradle_run_options` / `run_options`
+
+Arguments forwarded to Gradle when running an `executable.gradle` target with
+`nox run`.
 
 ### `install`
 

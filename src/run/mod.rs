@@ -75,6 +75,21 @@ impl<'a> ProjectRunner<'a> {
         graph::validate(&project)?;
         executor::build(&project, &state, self.jobs)?;
         let target = select_target(&project, requested_target)?;
+        if matches!(
+            &target.kind,
+            TargetKind::Executable {
+                language: Some(crate::core::model::TargetLanguage::Gradle)
+            }
+        ) {
+            let mut gradle_arguments = if target.gradle_run_tasks.is_empty() {
+                vec![format!(":{}:run", target.name)]
+            } else {
+                target.gradle_run_tasks.clone()
+            };
+            gradle_arguments.extend(target.gradle_run_options.clone());
+            crate::build_system::gradle::run(&state.root, &gradle_arguments)?;
+            return Ok(0);
+        }
         let artifact = executor::target_artifact_path(
             &state
                 .build_dir
@@ -179,6 +194,10 @@ mod tests {
             defines: vec![],
             flags: vec![],
             linker_flags: vec![],
+            gradle_tasks: vec![],
+            gradle_options: vec![],
+            gradle_run_tasks: vec![],
+            gradle_run_options: vec![],
             install: false,
         }
     }

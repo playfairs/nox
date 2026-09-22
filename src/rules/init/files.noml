@@ -11,6 +11,42 @@ ruleset "files" {
         project_type: null
         languages: ["Swift"]
     },
+    file: "build.gradle" {
+        build_system: Gradle
+        project_name: null
+        project_type: null
+        languages: []
+    },
+    file: "build.gradle.kts" {
+        build_system: Gradle
+        project_name: null
+        project_type: null
+        languages: []
+    },
+    file: "settings.gradle" {
+        build_system: Gradle
+        project_name: null
+        project_type: null
+        languages: []
+    },
+    file: "settings.gradle.kts" {
+        build_system: Gradle
+        project_name: null
+        project_type: null
+        languages: []
+    },
+    file: gradlew {
+        build_system: Gradle
+        project_name: null
+        project_type: null
+        languages: []
+    },
+    file: "gradlew.bat" {
+        build_system: Gradle
+        project_name: null
+        project_type: null
+        languages: []
+    },
     file: "package.json" {
         build_system: npm
         project_name: json_name

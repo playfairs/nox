@@ -25,6 +25,22 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         .join(&state.configuration)
         .join(&target.name);
     fs::create_dir_all(&output_dir)?;
+    if matches!(
+        &target.kind,
+        TargetKind::Executable {
+            language: Some(TargetLanguage::Gradle)
+        }
+    ) {
+        let mut arguments = if target.gradle_tasks.is_empty() {
+            vec![target.name.clone()]
+        } else {
+            target.gradle_tasks.clone()
+        };
+        arguments.extend(target.gradle_options.clone());
+        crate::build_system::gradle::run(&state.root, &arguments)?;
+        crate::core::output::action("ran Gradle", target.name.as_str());
+        return Ok(());
+    }
     let special_language = match target.kind {
         TargetKind::Executable {
             language: Some(TargetLanguage::Rust),
@@ -514,6 +530,8 @@ fn rider_for_target(target: &Target) -> Option<crate::toolchain::rider::RiderKin
         TargetLanguage::JavaScript => Some(crate::toolchain::rider::RiderKind::JavaScript),
         TargetLanguage::TypeScript => Some(crate::toolchain::rider::RiderKind::TypeScript),
         TargetLanguage::Python => Some(crate::toolchain::rider::RiderKind::Python),
+        TargetLanguage::Kotlin => Some(crate::toolchain::rider::RiderKind::Kotlin),
+        TargetLanguage::Gradle => None,
         TargetLanguage::FSharp => None,
     }
 }

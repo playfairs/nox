@@ -14,6 +14,7 @@ pub enum Language {
     JavaScript,
     TypeScript,
     Python,
+    Kotlin,
     Unknown,
 }
 
@@ -383,6 +384,7 @@ fn parse_language(value: &str) -> Result<Language, String> {
         "javascript" | "js" => Ok(Language::JavaScript),
         "typescript" | "ts" => Ok(Language::TypeScript),
         "python" | "py" => Ok(Language::Python),
+        "kotlin" | "kt" => Ok(Language::Kotlin),
         "unknown" => Ok(Language::Unknown),
         other => Err(format!("unknown language '{other}'")),
     }

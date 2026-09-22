@@ -88,5 +88,14 @@ ruleset "languages" {
         main_files: ["main.py", "__main__.py"]
         related_files: ["pyproject.toml"]
         target_types: ["executable"]
+    },
+    language: Kotlin {
+        display_name: Kotlin
+        aliases: ["kotlin", "kt"]
+        extensions: ["kt", "kts"]
+        header_extensions: []
+        main_files: ["Main.kt", "main.kt"]
+        related_files: ["build.gradle", "build.gradle.kts"]
+        target_types: ["executable"]
     }
 }

@@ -19,6 +19,8 @@ pub enum TargetLanguage {
     JavaScript,
     TypeScript,
     Python,
+    Kotlin,
+    Gradle,
 }
 
 impl TargetLanguage {
@@ -34,6 +36,8 @@ impl TargetLanguage {
             "javascript" | "js" => Some(Self::JavaScript),
             "typescript" | "ts" => Some(Self::TypeScript),
             "python" | "py" => Some(Self::Python),
+            "kotlin" | "kt" => Some(Self::Kotlin),
+            "gradle" => Some(Self::Gradle),
             _ => None,
         }
     }
@@ -57,6 +61,10 @@ pub struct Target {
     pub defines: Vec<String>,
     pub flags: Vec<String>,
     pub linker_flags: Vec<String>,
+    pub gradle_tasks: Vec<String>,
+    pub gradle_options: Vec<String>,
+    pub gradle_run_tasks: Vec<String>,
+    pub gradle_run_options: Vec<String>,
     pub install: bool,
 }
 

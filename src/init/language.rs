@@ -16,6 +16,7 @@ impl Language {
             Self::JavaScript => "javascript",
             Self::TypeScript => "typescript",
             Self::Python => "python",
+            Self::Kotlin => "kotlin",
             Self::Unknown => "unknown",
         }
     }
