@@ -89,6 +89,37 @@ repository toward NOML-backed configuration instead of hard-coded behavior.
 * ``f43098c`` - Converted run handlers to NOML.
 * ``8366c10`` - Converted the YAML-like task representation to NOML.
 
+2026-09-19: Environment, state, and CLI ergonomics
+---------------------------------------------------
+
+* ``5cd0742`` - Added project environment handling and the ``nox env``
+  command for viewing the active project environment.
+* ``089ce8e`` and ``4b94aa7`` - Added ``extra.env`` project blocks and
+  parsed them into the project model and configuration system.
+* ``9135818`` and ``932e494`` - Registered environment command metadata and
+  canonical command definitions for ``nox env`` and related support.
+* ``e73a945`` - Refreshed CLI help for debug and env behavior.
+* ``1ef7f97`` - Documented ``extra.env`` and the project environment workflow.
+* ``360221d`` and ``e7e3132`` - Improved state-path handling, comment support,
+  and the migration from ``nox.config`` to ``nox.state``.
+* ``453a008`` - Enabled full Rust backtraces by default for deeper debugging.
+* ``21cf14e`` - Standardized quoted path output in the CLI for readability.
+
+2026-09-22: Gradle target support
+---------------------------------
+
+* ``2a7c8bf`` - Added Gradle project target support, including target
+  configuration and execution paths for Gradle-backed projects.
+
+2026-09-24: Q# support and rider polish
+---------------------------------------
+
+* ``af9a075`` - Added first-class Q# language support via the .NET SDK and
+  ``Microsoft.Quantum.Sdk``, including ``.qs`` source detection, Q# target
+  integration, and Q# initialization templates.
+* ``edda41f`` - Sorted the ``nox riders`` output and cleaned up the resulting
+  CLI listing for stable, easier-to-scan output.
+
 NOTES
 --------------
 
