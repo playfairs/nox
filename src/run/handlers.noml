@@ -95,6 +95,14 @@ ruleset "handlers" {
         tools: ["dotnet", "csc", "mcs"]
         arguments: []
     },
+    handler: QSharp {
+        language: "Q#"
+        dependency: "the .NET SDK with Microsoft.Quantum.Sdk"
+        mode: unsupported
+        extensions: ["qs"]
+        tools: ["dotnet"]
+        arguments: []
+    },
     handler: Swift {
         language: "Swift"
         dependency: "swiftc"

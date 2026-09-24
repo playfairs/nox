@@ -277,6 +277,12 @@ fn run_project_artifact(target: &Target, artifact: &Path, arguments: &[String]) 
             command.arg(artifact);
             command
         }
+        Some(rider::RiderKind::QSharp) => {
+            let dotnet = required_runtime(artifact, &["dotnet".to_string()], "the .NET SDK")?;
+            let mut command = Command::new(dotnet);
+            command.arg(artifact);
+            command
+        }
         Some(rider::RiderKind::JavaScript | rider::RiderKind::TypeScript) => {
             let node = required_runtime(artifact, &["node".to_string()], "Node.js")?;
             let mut command = Command::new(node);

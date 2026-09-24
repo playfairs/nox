@@ -61,6 +61,22 @@ fn parses_kotlin_and_gradle_targets() {
 }
 
 #[test]
+fn parses_qsharp_executable_target() {
+    let project = parse(
+        "project \"demo\" { executable.qsharp \"app\" { sources = [\"src/main.qs\"] } }",
+        Path::new("."),
+    )
+    .expect("Q# executable targets should parse");
+
+    assert_eq!(
+        project.targets[0].kind,
+        TargetKind::Executable {
+            language: Some(TargetLanguage::QSharp)
+        }
+    );
+}
+
+#[test]
 fn parses_multiple_projects() {
     let projects = parse_projects(
         "project \"first\" { executable.rust \"one\" { sources = [\"one.rs\"] } } project \"second\" { executable.rust \"two\" { sources = [\"two.rs\"] } }",

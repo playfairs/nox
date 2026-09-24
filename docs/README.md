@@ -23,7 +23,7 @@ The current implementation supports:
 - C executables, static libraries, and shared libraries
 - C++ executables, static libraries, and shared libraries for `.cpp`, `.cc`, and `.cxx` sources
 - Rust executables and libraries through `rustc`
-- Built-in language/toolchain Riders for C, C++, Rust, Go, Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin
+- Built-in language/toolchain Riders for C, C++, Rust, Go, Java, C#, Q#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin
 - GCC- and Clang-compatible C/C++ toolchains
 - Debug and release configurations
 - Dependency-aware target ordering

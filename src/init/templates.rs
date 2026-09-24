@@ -25,6 +25,10 @@ pub fn starter(language: Language, project_type: ProjectType) -> (&'static str, 
         (Language::TypeScript, _) => ("src/index.ts", "console.log(\"hello from Nox\");\n"),
         (Language::Python, _) => ("src/main.py", "print(\"hello from Nox\")\n"),
         (Language::Kotlin, _) => ("src/main.kt", "fun main() = println(\"hello from Nox\")\n"),
+        (Language::QSharp, _) => (
+            "src/main.qs",
+            "namespace Sample {\n    operation Hello() : Unit {\n        Message(\"hello from Nox\");\n    }\n}\n",
+        ),
         (Language::FSharp, _) => ("src/main.fsx", "printfn \"hello from Nox\"\n"),
         (Language::Unknown, _) => ("src/main.c", "int main(void) { return 0; }\n"),
     }
@@ -40,6 +44,7 @@ pub fn flake(language: Language, formatter_enabled: bool) -> String {
         Language::TypeScript => "nodejs nodePackages.typescript",
         Language::Python => "python3",
         Language::Kotlin => "kotlin gradle",
+        Language::QSharp => "dotnet-sdk",
         Language::FSharp => "dotnet-sdk",
         Language::Unknown => "clang",
     };
@@ -63,6 +68,7 @@ pub fn formatter(language: Language) -> Option<(&'static str, &'static str)> {
             ".prettierrc",
             "{\n  \"semi\": true,\n  \"singleQuote\": false\n}\n",
         )),
+        Language::QSharp => None,
         Language::Swift => Some((
             ".swift-format",
             "{\n  \"indentation\": { \"spaces\": 4 }\n}\n",

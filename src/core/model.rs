@@ -20,6 +20,7 @@ pub enum TargetLanguage {
     TypeScript,
     Python,
     Kotlin,
+    QSharp,
     Gradle,
 }
 
@@ -37,6 +38,7 @@ impl TargetLanguage {
             "typescript" | "ts" => Some(Self::TypeScript),
             "python" | "py" => Some(Self::Python),
             "kotlin" | "kt" => Some(Self::Kotlin),
+            "qsharp" | "qs" => Some(Self::QSharp),
             "gradle" => Some(Self::Gradle),
             _ => None,
         }

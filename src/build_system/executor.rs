@@ -290,6 +290,44 @@ fn build_external_target(
                 .args(&target.sources);
             run(command)?;
         }
+        crate::toolchain::rider::RiderKind::QSharp => {
+            let project_dir = output_dir.join("project");
+            fs::create_dir_all(&project_dir)?;
+            for source in &target.sources {
+                let name = source.file_name().ok_or_else(|| {
+                    Error::Config(format!("invalid Q# source path '{}'", source.display()))
+                })?;
+                fs::copy(source, project_dir.join(name))?;
+            }
+            let project_name = format!("{}.csproj", target.name);
+            let project_file = project_dir.join(&project_name);
+            let output_type = if matches!(target.kind, TargetKind::Executable { .. }) {
+                "Exe"
+            } else {
+                "Library"
+            };
+            let project_xml = format!(
+                r#"<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.Quantum.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>{output_type}</OutputType>
+  </PropertyGroup>
+</Project>
+"#
+            );
+            fs::write(&project_file, project_xml)?;
+            let mut command = Command::new(tool);
+            command
+                .arg("build")
+                .arg("-nologo")
+                .arg("--verbosity")
+                .arg("minimal")
+                .arg("--output")
+                .arg(output_dir)
+                .arg(&project_file);
+            run(command)?;
+        }
         crate::toolchain::rider::RiderKind::Swift => {
             let mut command = Command::new(tool);
             command.args(&target.sources).arg("-o").arg(&output);
@@ -398,6 +436,7 @@ fn external_artifact_path(
         crate::toolchain::rider::RiderKind::Python => ".py",
         crate::toolchain::rider::RiderKind::JavaScript
         | crate::toolchain::rider::RiderKind::TypeScript => ".js",
+        crate::toolchain::rider::RiderKind::QSharp => ".dll",
         _ => "",
     };
     directory.join(format!("{}{suffix}", target.name))
@@ -531,6 +570,7 @@ fn rider_for_target(target: &Target) -> Option<crate::toolchain::rider::RiderKin
         TargetLanguage::TypeScript => Some(crate::toolchain::rider::RiderKind::TypeScript),
         TargetLanguage::Python => Some(crate::toolchain::rider::RiderKind::Python),
         TargetLanguage::Kotlin => Some(crate::toolchain::rider::RiderKind::Kotlin),
+        TargetLanguage::QSharp => Some(crate::toolchain::rider::RiderKind::QSharp),
         TargetLanguage::Gradle => None,
         TargetLanguage::FSharp => None,
     }

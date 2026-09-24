@@ -110,7 +110,8 @@ C and C++ sources use the detected GCC or Clang-compatible compiler with
 compiler-generated dependency files. Static libraries, shared libraries,
 executables, includes, definitions, compiler flags, linker flags, debug/release
 settings, and parallel compilation are supported. Basic Rust executables and
-libraries use ``rustc`` directly.
+libraries use ``rustc`` directly. Q# sources use the .NET SDK via
+``Microsoft.Quantum.Sdk`` and are recognized through the ``.qs`` extension.
 
 Nix
 ===

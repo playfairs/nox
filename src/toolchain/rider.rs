@@ -10,6 +10,7 @@ pub enum RiderKind {
     Go,
     Java,
     CSharp,
+    QSharp,
     Swift,
     Zig,
     Python,
@@ -77,6 +78,12 @@ pub fn available() -> &'static [Rider] {
             extensions: &["cs"],
         },
         Rider {
+            name: "Q# Rider",
+            kind: RiderKind::QSharp,
+            description: "Builds Q# projects through the .NET SDK and Microsoft.Quantum.Sdk.",
+            extensions: &["qs"],
+        },
+        Rider {
             name: "Swift Rider",
             kind: RiderKind::Swift,
             description: "Builds Swift executables through swiftc.",
@@ -136,6 +143,14 @@ mod tests {
         assert_eq!(
             for_source(Path::new("Main.lhs")).unwrap().kind,
             RiderKind::Haskell
+        );
+    }
+
+    #[test]
+    fn resolves_qsharp_sources() {
+        assert_eq!(
+            for_source(Path::new("main.qs")).unwrap().kind,
+            RiderKind::QSharp
         );
     }
 }

@@ -97,5 +97,14 @@ ruleset "languages" {
         main_files: ["Main.kt", "main.kt"]
         related_files: ["build.gradle", "build.gradle.kts"]
         target_types: ["executable"]
+    },
+    language: QSharp {
+        display_name: "Q#"
+        aliases: ["qsharp", "qs"]
+        extensions: ["qs"]
+        header_extensions: []
+        main_files: ["main.qs"]
+        related_files: []
+        target_types: ["executable"]
     }
 }
