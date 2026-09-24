@@ -190,7 +190,9 @@ pub fn run() -> Result<()> {
         return Ok(());
     }
     if command == "riders" {
-        for rider in rider::available() {
+        let mut riders = rider::available().to_vec();
+        riders.sort_by(|left, right| left.name.cmp(right.name));
+        for rider in riders {
             output::list_item(rider.name, rider.description);
         }
         return Ok(());
