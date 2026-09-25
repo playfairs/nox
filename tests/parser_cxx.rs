@@ -77,6 +77,21 @@ fn parses_qsharp_executable_target() {
 }
 
 #[test]
+fn parses_library_targets_and_legacy_names() {
+    let project = parse(
+        "project \"demo\" { library.static \"static\" { sources = [\"static.c\"] } library.shared \"shared\" { sources = [\"shared.c\"] } library.rust \"rust\" { sources = [\"lib.rs\"] } library.qsharp \"qsharp\" { sources = [\"lib.qs\"] } static_library \"legacy\" { sources = [\"legacy.c\"] } }",
+        Path::new("."),
+    )
+    .expect("library target forms should parse");
+
+    assert_eq!(project.targets[0].kind, TargetKind::StaticLibrary);
+    assert_eq!(project.targets[1].kind, TargetKind::SharedLibrary);
+    assert_eq!(project.targets[2].kind, TargetKind::RustLibrary);
+    assert_eq!(project.targets[3].kind, TargetKind::QSharpLibrary);
+    assert_eq!(project.targets[4].kind, TargetKind::StaticLibrary);
+}
+
+#[test]
 fn parses_multiple_projects() {
     let projects = parse_projects(
         "project \"first\" { executable.rust \"one\" { sources = [\"one.rs\"] } } project \"second\" { executable.rust \"two\" { sources = [\"two.rs\"] } }",

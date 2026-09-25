@@ -1,5 +1,6 @@
 use crate::core::error::{Error, Result};
 use crate::core::model::{Project, Setting, Target, TargetKind, TargetLanguage};
+use crate::core::output;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -260,14 +261,52 @@ impl<'a> Parser<'a> {
                     };
                     targets.push(self.target(TargetKind::Executable { language })?)
                 }
-                "qsharp_library" => targets.push(self.target(TargetKind::QSharpLibrary)?),
+                "library" => {
+                    let kind = if self.take_symbol('.') {
+                        self.word()?
+                    } else {
+                        return Err(Error::Config(
+                            "library targets require a kind such as library.static or library.rust"
+                                .to_string(),
+                        ));
+                    };
+                    let target_kind = match kind.as_str() {
+                        "qsharp" => TargetKind::QSharpLibrary,
+                        "rust" => TargetKind::RustLibrary,
+                        "static" => TargetKind::StaticLibrary,
+                        "shared" => TargetKind::SharedLibrary,
+                        _ => {
+                            return Err(Error::Config(format!(
+                                "unsupported library kind '{kind}'"
+                            )))
+                        }
+                    };
+                    targets.push(self.target(target_kind)?)
+                }
+                "qsharp_library" => {
+                    output::warning(
+                        "'qsharp_library' is deprecated; use 'library.qsharp' instead. It will be removed in v1.3.0.",
+                    );
+                    targets.push(self.target(TargetKind::QSharpLibrary)?)
+                }
                 "static_library" | "static" => {
+                    output::warning(
+                        "'static_library' and 'static' are deprecated; use 'library.static' instead. They will be removed in v1.3.0.",
+                    );
                     targets.push(self.target(TargetKind::StaticLibrary)?)
                 }
                 "shared_library" | "shared" => {
+                    output::warning(
+                        "'shared_library' and 'shared' are deprecated; use 'library.shared' instead. They will be removed in v1.3.0.",
+                    );
                     targets.push(self.target(TargetKind::SharedLibrary)?)
                 }
-                "rust_library" => targets.push(self.target(TargetKind::RustLibrary)?),
+                "rust_library" => {
+                    output::warning(
+                        "'rust_library' is deprecated; use 'library.rust' instead. It will be removed in v1.3.0.",
+                    );
+                    targets.push(self.target(TargetKind::RustLibrary)?)
+                }
                 unknown => return Err(Error::Parse(format!("unknown project member '{unknown}'"))),
             }
         }

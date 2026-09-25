@@ -187,27 +187,25 @@ executable "app" {
 }
 ```
 
-### C static library
+### Static and shared libraries
+
+Use the qualified `library.<kind>` forms for new projects:
 
 ```text
-static_library "math" {
+library.static "math" {
     sources = ["src/math.c"]
     install = true
 }
-```
 
-`static` is accepted as an alias for `static_library`.
-
-### C shared library
-
-```text
-shared_library "support" {
+library.shared "support" {
     sources = ["src/support.c"]
     install = true
 }
 ```
 
-`shared` is accepted as an alias for `shared_library`.
+The same forms work for C++ sources. The older `static_library`,
+`shared_library`, `static`, and `shared` spellings remain accepted for
+compatibility, but are deprecated and scheduled for removal in `v1.3.0`.
 
 ### C++ executable or library
 
@@ -257,15 +255,22 @@ executable.rust "tool" {
 }
 ```
 
-### Rust library
+### Rust and Q# libraries
 
 ```text
-rust_library "common" {
+library.rust "common" {
     sources = ["src/lib.rs"]
+}
+
+library.qsharp "quantum" {
+    sources = ["src/lib.qs"]
 }
 ```
 
 Rust targets currently use the first source file and invoke `rustc` directly. They are not Cargo packages and do not yet model Rust crate dependencies.
+
+The older `rust_library` and `qsharp_library` spellings remain accepted for
+compatibility, but are deprecated and scheduled for removal in `v1.3.0`.
 
 ### Kotlin executable
 
