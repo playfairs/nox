@@ -675,11 +675,18 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
             _ => "stable",
         }
     );
+    let executable = invoked_executable()?;
+    let install_root = executable
+        .parent()
+        .and_then(Path::parent)
+        .ok_or_else(|| Error::Config("could not determine Nox installation root".to_string()))?;
     let mut args = vec![
         "install".to_string(),
         "--git".to_string(),
         REPOSITORY_URL.to_string(),
         "nox".to_string(),
+        "--root".to_string(),
+        install_root.to_string_lossy().into_owned(),
     ];
     args.extend(install_args);
     args.extend(["--locked".to_string(), "--force".to_string()]);
@@ -751,19 +758,19 @@ fn fetch_version(branch: &str) -> Result<SemVersion> {
 }
 
 fn is_nix_managed() -> Result<bool> {
-    let invoked = std::env::args_os().next().map(PathBuf::from);
-    let explicit_path = invoked.as_ref().filter(|path| {
+    let executable = invoked_executable()?;
+    let explicit_path = std::env::args_os().next().is_some_and(|argument| {
+        let path = Path::new(&argument);
         path.is_absolute()
             || path
                 .parent()
                 .is_some_and(|parent| parent != Path::new(""))
     });
-    let executable = explicit_path.cloned().unwrap_or(std::env::current_exe()?);
     let path = fs::canonicalize(&executable).unwrap_or(executable);
     if is_nix_managed_path(&path) {
         return Ok(true);
     }
-    if explicit_path.is_some() {
+    if explicit_path {
         return Ok(false);
     }
 
@@ -774,6 +781,17 @@ fn is_nix_managed() -> Result<bool> {
         }
     }
     Ok(false)
+}
+
+fn invoked_executable() -> Result<PathBuf> {
+    let invoked = std::env::args_os().next().map(PathBuf::from);
+    let explicit_path = invoked.as_ref().filter(|path| {
+        path.is_absolute()
+            || path
+                .parent()
+                .is_some_and(|parent| parent != Path::new(""))
+    });
+    Ok(explicit_path.cloned().unwrap_or(std::env::current_exe()?))
 }
 
 fn is_nix_managed_path(path: &Path) -> bool {
