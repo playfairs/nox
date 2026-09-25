@@ -223,7 +223,7 @@ version = "0.1.0"
 
 [[package]]
 name = "nox"
-version = "1.2.9"
+version = "1.2.10"
 dependencies = [
  "askalono",
  "license",
