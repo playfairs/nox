@@ -21,6 +21,7 @@ pub fn print(command: &str) {
   test                  Run the noxfile test task
   task                  Run a named noxfile task
   version               Print the Nox version
+  update                Update Nox from the latest repository version
   bump-version, bump    Bump or set the project version
   help                  Show command-specific help
 
@@ -79,6 +80,9 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
         }
         "version" => {
             "Usage: nox version\n\nPrint the installed Nox version. --version, -V, and -v are also accepted."
+        }
+        "update" => {
+            "Usage: nox update [--dev | --channel CHANNEL | --version VERSION]\n\nUpdate Nox from the latest stable release on master. Use --dev or --channel dev for development releases, --channel stable for stable releases, or --version for an exact release. Nix-managed installations must be updated through Nix."
         }
         "bump-version" | "bump" => {
             "Usage: nox bump-version [major|minor|patch|VERSION]\n\nBump the VERSION file and update matching version references in project files. Defaults to a patch bump.\n\nAliases: nox bump."

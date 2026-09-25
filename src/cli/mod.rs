@@ -13,12 +13,38 @@ use crate::task;
 use crate::toolchain::{detection, rider};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 mod commands;
 mod help;
 
 fn version() -> &'static str {
     include_str!("../../VERSION").trim()
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum UpdateChannel {
+    Stable,
+    Dev,
+}
+
+impl UpdateChannel {
+    fn parse(value: &str) -> Result<Self> {
+        match value {
+            "stable" => Ok(Self::Stable),
+            "dev" => Ok(Self::Dev),
+            _ => Err(Error::Config(format!(
+                "unknown update channel '{value}' (expected stable or dev)"
+            ))),
+        }
+    }
+
+    fn branch(self) -> &'static str {
+        match self {
+            Self::Stable => "master",
+            Self::Dev => "dev",
+        }
+    }
 }
 
 pub fn run() -> Result<()> {
@@ -46,6 +72,9 @@ pub fn run() -> Result<()> {
     let mut positional = Vec::new();
     let mut run_arguments = Vec::new();
     let mut init_options = init::Options::default();
+    let mut update_channel = None;
+    let mut update_version = None;
+    let mut update_dev = false;
     while let Some(argument) = arguments.next() {
         if command == "run" && argument == "--" {
             run_arguments.extend(arguments);
@@ -53,9 +82,22 @@ pub fn run() -> Result<()> {
         }
         match argument.as_str() {
             "--help" | "-h" => help_requested = true,
+            "--version" if command == "update" => {
+                update_version = Some(arguments.next().ok_or_else(|| {
+                    Error::Config("--version requires a value for update".to_string())
+                })?);
+            }
             "--version" | "-V" | "-v" => {
                 output::version("nox", version());
                 return Ok(());
+            }
+            "--dev" if command == "update" => update_dev = true,
+            "--channel" if command == "update" => {
+                update_channel = Some(
+                    arguments
+                        .next()
+                        .ok_or_else(|| Error::Config("--channel requires a value".to_string()))?,
+                );
             }
             "-j" => {
                 jobs = arguments
@@ -189,6 +231,27 @@ pub fn run() -> Result<()> {
         output::version("nox", version());
         return Ok(());
     }
+    if command == "update" {
+        if update_dev && update_channel.is_some() {
+            return Err(Error::Config(
+                "--dev and --channel cannot be used together".to_string(),
+            ));
+        }
+        if update_version.is_some() && (update_dev || update_channel.is_some()) {
+            return Err(Error::Config(
+                "--version cannot be combined with --channel or --dev".to_string(),
+            ));
+        }
+        let channel = if update_dev {
+            Some(UpdateChannel::Dev)
+        } else {
+            update_channel
+                .as_deref()
+                .map(UpdateChannel::parse)
+                .transpose()?
+        };
+        return update(channel, update_version.as_deref());
+    }
     if command == "riders" {
         let mut riders = rider::available().to_vec();
         riders.sort_by(|left, right| left.name.cmp(right.name));
@@ -277,13 +340,17 @@ fn collect_noml_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> 
     for entry in fs::read_dir(directory)? {
         let path = entry?.path();
         if path.is_dir() {
-            if path.file_name().is_some_and(|name| {
-                matches!(name.to_str(), Some(".git" | "target" | "build"))
-            }) {
+            if path
+                .file_name()
+                .is_some_and(|name| matches!(name.to_str(), Some(".git" | "target" | "build")))
+            {
                 continue;
             }
             collect_noml_files(&path, files)?;
-        } else if path.extension().is_some_and(|extension| extension == "noml") {
+        } else if path
+            .extension()
+            .is_some_and(|extension| extension == "noml")
+        {
             files.push(path);
         }
     }
@@ -521,6 +588,230 @@ fn bump_version(
     Ok(())
 }
 
+fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Result<()> {
+    const REPOSITORY_URL: &str = "https://github.com/playfairs/nox.git";
+
+    if is_nix_managed()? {
+        println!(
+            "Nox is managed by Nix.\nUpdate Nox through your Nix configuration:\n\n    nix flake update nox\n\nRun this command from your Nix configuration directory."
+        );
+        return Ok(());
+    }
+
+    let requested = requested_version.map(parse_semver).transpose()?;
+    let (target_version, install_args, channel) = match (channel, requested) {
+        (Some(channel), None) => {
+            let latest = fetch_version(channel.branch())?;
+            (
+                latest,
+                vec!["--branch".to_string(), channel.branch().to_string()],
+                Some(channel),
+            )
+        }
+        (None, Some(version)) => (
+            version.clone(),
+            vec!["--tag".to_string(), format!("v{version}")],
+            None,
+        ),
+        (None, None) => {
+            let channel = UpdateChannel::Stable;
+            let latest = fetch_version(channel.branch())?;
+            (
+                latest,
+                vec!["--branch".to_string(), channel.branch().to_string()],
+                Some(channel),
+            )
+        }
+        (Some(_), Some(_)) => unreachable!("update channel and version are mutually exclusive"),
+    };
+
+    let current = parse_semver(version())?;
+    if requested_version.is_some() {
+        if target_version == current {
+            println!("Nox {target_version} is already installed.");
+            return Ok(());
+        }
+        if target_version < current {
+            println!(
+                "Requested version ({target_version}) is older than the installed version ({}).\nNox will not downgrade automatically.",
+                version()
+            );
+            return Ok(());
+        }
+    } else if target_version == current {
+        match channel {
+            Some(UpdateChannel::Dev) => println!(
+                "Nox is already up to date with the development channel ({target_version})."
+            ),
+            _ => println!("Nox is already up to date ({target_version})."),
+        }
+        return Ok(());
+    } else if target_version < current {
+        match channel {
+            Some(UpdateChannel::Dev) => println!(
+                "Installed Nox version ({}) is newer than the latest development version ({target_version}).\nNox will not downgrade automatically.",
+                version()
+            ),
+            _ => println!(
+                "Installed Nox version ({}) is newer than the latest stable version ({target_version}).\nNox will not downgrade automatically.",
+                version()
+            ),
+        }
+        return Ok(());
+    }
+
+    println!(
+        "A newer {} version of Nox is available: {target_version}.\nUpdating...",
+        match channel {
+            Some(UpdateChannel::Dev) => "development",
+            _ => "stable",
+        }
+    );
+    let mut args = vec![
+        "install".to_string(),
+        "--git".to_string(),
+        REPOSITORY_URL.to_string(),
+    ];
+    args.extend(install_args);
+    args.extend(["--locked".to_string(), "--force".to_string()]);
+    let status = Command::new("cargo")
+        .args(&args)
+        .status()
+        .map_err(|error| Error::Process(format!("could not start cargo install: {error}")))?;
+    if status.success() {
+        output::action("updated nox", target_version);
+        Ok(())
+    } else {
+        Err(Error::Process(format!(
+            "cargo install exited with {status}"
+        )))
+    }
+}
+
+fn fetch_version(branch: &str) -> Result<SemVersion> {
+    let url = format!("https://raw.githubusercontent.com/playfairs/nox/{branch}/VERSION");
+    let response = Command::new("curl")
+        .args(["--fail", "--silent", "--show-error", &url])
+        .output()
+        .map_err(|error| {
+            Error::Process(format!("could not query the latest Nox version: {error}"))
+        })?;
+    if !response.status.success() {
+        return Err(Error::Process(format!(
+            "could not query the latest Nox version (curl exited with {})",
+            response.status
+        )));
+    }
+    let latest = String::from_utf8(response.stdout).map_err(|error| {
+        Error::Process(format!("latest Nox version was not valid UTF-8: {error}"))
+    })?;
+    parse_semver(latest.trim())
+}
+
+fn is_nix_managed() -> Result<bool> {
+    let executable = std::env::current_exe()?;
+    let path = fs::canonicalize(executable).unwrap_or_else(|_| PathBuf::from(""));
+    if path.starts_with("/nix/store") {
+        return Ok(true);
+    }
+
+    let mut output = Vec::new();
+    if let Ok(result) = Command::new("where").arg("nox").output() {
+        output.extend(result.stdout);
+        output.extend(result.stderr);
+    }
+    if cfg!(target_os = "macos") {
+        if let Ok(result) = Command::new("zsh").args(["-lc", "where nox"]).output() {
+            output.extend(result.stdout);
+            output.extend(result.stderr);
+        }
+    }
+
+    Ok(String::from_utf8_lossy(&output).contains(".nix-profile/bin/nox"))
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct SemVersion {
+    major: u64,
+    minor: u64,
+    patch: u64,
+    prerelease: Vec<String>,
+}
+
+impl std::fmt::Display for SemVersion {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}.{}.{}", self.major, self.minor, self.patch)?;
+        if !self.prerelease.is_empty() {
+            write!(formatter, "-{}", self.prerelease.join("."))?;
+        }
+        Ok(())
+    }
+}
+
+impl Ord for SemVersion {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.major, self.minor, self.patch)
+            .cmp(&(other.major, other.minor, other.patch))
+            .then_with(
+                || match (self.prerelease.is_empty(), other.prerelease.is_empty()) {
+                    (true, true) => std::cmp::Ordering::Equal,
+                    (true, false) => std::cmp::Ordering::Greater,
+                    (false, true) => std::cmp::Ordering::Less,
+                    (false, false) => compare_prerelease(&self.prerelease, &other.prerelease),
+                },
+            )
+    }
+}
+
+impl PartialOrd for SemVersion {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn compare_prerelease(left: &[String], right: &[String]) -> std::cmp::Ordering {
+    for (left, right) in left.iter().zip(right) {
+        let ordering = match (left.parse::<u64>(), right.parse::<u64>()) {
+            (Ok(left), Ok(right)) => left.cmp(&right),
+            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
+            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
+            (Err(_), Err(_)) => left.cmp(right),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    left.len().cmp(&right.len())
+}
+
+fn parse_semver(value: &str) -> Result<SemVersion> {
+    let value = value.strip_prefix('v').unwrap_or(value);
+    let value = value.split_once('+').map_or(value, |(value, _)| value);
+    let (core, prerelease) = value.split_once('-').map_or((value, ""), |parts| parts);
+    let parts: Vec<_> = core.split('.').collect();
+    if parts.len() != 3 || parts.iter().any(|part| part.is_empty()) {
+        return Err(Error::Config(format!(
+            "version '{value}' is not valid semantic version"
+        )));
+    }
+    let numbers = parts
+        .iter()
+        .map(|part| part.parse::<u64>())
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(|_| Error::Config(format!("version '{value}' is not valid semantic version")))?;
+    let prerelease = if prerelease.is_empty() {
+        Vec::new()
+    } else {
+        prerelease.split('.').map(str::to_string).collect()
+    };
+    Ok(SemVersion {
+        major: numbers[0],
+        minor: numbers[1],
+        patch: numbers[2],
+        prerelease,
+    })
+}
+
 fn version_files(root: &Path) -> Result<Option<Vec<PathBuf>>> {
     let path = root.join("nox.build");
     if !path.is_file() {
@@ -671,12 +962,18 @@ fn configured_build_dir(root: &Path) -> Result<Option<PathBuf>> {
     let value = text
         .lines()
         .find_map(|line| line.strip_prefix("build_dir="))
-        .ok_or_else(|| Error::Config(format!("invalid {}", path.file_name().unwrap_or_default().to_string_lossy())))?;
+        .ok_or_else(|| {
+            Error::Config(format!(
+                "invalid {}",
+                path.file_name().unwrap_or_default().to_string_lossy()
+            ))
+        })?;
     let trimmed = value.trim();
     if trimmed.is_empty() {
-        return Err(Error::Config(
-            format!("{} has no build directory", path.file_name().unwrap_or_default().to_string_lossy()),
-        ));
+        return Err(Error::Config(format!(
+            "{} has no build directory",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        )));
     }
     let unquoted = trimmed
         .strip_prefix('"')
@@ -810,10 +1107,7 @@ fn select_install_project<'a>(
     Ok(None)
 }
 
-fn project_selection_message(
-    projects: &[crate::core::model::Project],
-    command: &str,
-) -> String {
+fn project_selection_message(projects: &[crate::core::model::Project], command: &str) -> String {
     let executables = projects
         .iter()
         .flat_map(|project| {
@@ -853,7 +1147,7 @@ fn default_install_prefix() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{bump_version, run_with_project, standalone_file, version_files};
+    use super::{bump_version, parse_semver, run_with_project, standalone_file, version_files};
     use crate::rules::base::BaseRules;
     use std::fs;
 
@@ -899,8 +1193,14 @@ mod tests {
         )
         .expect("clean should succeed");
 
-        assert!(root.join("nox.state").is_file(), "nox.state should remain after clean");
-        assert!(!root.join("build").exists(), "build directory should be removed during clean");
+        assert!(
+            root.join("nox.state").is_file(),
+            "nox.state should remain after clean"
+        );
+        assert!(
+            !root.join("build").exists(),
+            "build directory should be removed during clean"
+        );
         fs::remove_dir_all(root).expect("cleanup test directory");
     }
 
@@ -964,5 +1264,12 @@ mod tests {
             "old 9.8.7 and 19.8.7\n"
         );
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn compares_semantic_versions_and_prereleases() {
+        assert!(parse_semver("1.2.10").unwrap() > parse_semver("1.2.9").unwrap());
+        assert!(parse_semver("1.2.5").unwrap() > parse_semver("1.2.5-dev").unwrap());
+        assert!(parse_semver("1.2.5-10").unwrap() > parse_semver("1.2.5-2").unwrap());
     }
 }

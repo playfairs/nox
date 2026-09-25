@@ -17,6 +17,15 @@ ruleset "commands" {
             requires_project: false
         }
     },
+    command: update {
+        aliases: []
+        description: ["Update Nox from a release channel or exact version."]
+        rules: {
+            accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
+        }
+    },
     command: riders {
         aliases: []
         description: ["Display available riders."]
