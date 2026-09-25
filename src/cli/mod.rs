@@ -709,25 +709,54 @@ fn fetch_version(branch: &str) -> Result<SemVersion> {
 }
 
 fn is_nix_managed() -> Result<bool> {
-    let executable = std::env::current_exe()?;
-    let path = fs::canonicalize(executable).unwrap_or_else(|_| PathBuf::from(""));
-    if path.starts_with("/nix/store") {
+    let invoked = std::env::args_os().next().map(PathBuf::from);
+    let explicit_path = invoked.as_ref().filter(|path| {
+        path.is_absolute()
+            || path
+                .parent()
+                .is_some_and(|parent| parent != Path::new(""))
+    });
+    let executable = explicit_path.cloned().unwrap_or(std::env::current_exe()?);
+    let path = fs::canonicalize(&executable).unwrap_or(executable);
+    if is_nix_managed_path(&path) {
         return Ok(true);
     }
+    if explicit_path.is_some() {
+        return Ok(false);
+    }
 
-    let mut output = Vec::new();
+    for candidate in where_nox_paths() {
+        let candidate = fs::canonicalize(candidate).unwrap_or_else(|_| PathBuf::from(""));
+        if candidate == path {
+            return Ok(is_nix_managed_path(&candidate));
+        }
+    }
+    Ok(false)
+}
+
+fn is_nix_managed_path(path: &Path) -> bool {
+    path.starts_with("/nix/store") || path.to_string_lossy().contains(".nix-profile/bin/nox")
+}
+
+fn where_nox_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
     if let Ok(result) = Command::new("where").arg("nox").output() {
-        output.extend(result.stdout);
-        output.extend(result.stderr);
+        paths.extend(
+            String::from_utf8_lossy(&result.stdout)
+                .lines()
+                .map(PathBuf::from),
+        );
     }
     if cfg!(target_os = "macos") {
         if let Ok(result) = Command::new("zsh").args(["-lc", "where nox"]).output() {
-            output.extend(result.stdout);
-            output.extend(result.stderr);
+            paths.extend(
+                String::from_utf8_lossy(&result.stdout)
+                    .lines()
+                    .map(PathBuf::from),
+            );
         }
     }
-
-    Ok(String::from_utf8_lossy(&output).contains(".nix-profile/bin/nox"))
+    paths
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1147,9 +1176,13 @@ fn default_install_prefix() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{bump_version, parse_semver, run_with_project, standalone_file, version_files};
+    use super::{
+        bump_version, is_nix_managed_path, parse_semver, run_with_project, standalone_file,
+        version_files,
+    };
     use crate::rules::base::BaseRules;
     use std::fs;
+    use std::path::Path;
 
     #[test]
     fn resolves_short_command_aliases() {
@@ -1271,5 +1304,14 @@ mod tests {
         assert!(parse_semver("1.2.10").unwrap() > parse_semver("1.2.9").unwrap());
         assert!(parse_semver("1.2.5").unwrap() > parse_semver("1.2.5-dev").unwrap());
         assert!(parse_semver("1.2.5-10").unwrap() > parse_semver("1.2.5-2").unwrap());
+    }
+
+    #[test]
+    fn identifies_nix_paths_without_matching_unrelated_installations() {
+        assert!(is_nix_managed_path(Path::new(
+            "/Users/playfairs/.nix-profile/bin/nox"
+        )));
+        assert!(is_nix_managed_path(Path::new("/nix/store/nox/bin/nox")));
+        assert!(!is_nix_managed_path(Path::new("/usr/local/bin/nox")));
     }
 }
