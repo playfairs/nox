@@ -126,6 +126,14 @@ repository toward NOML-backed configuration instead of hard-coded behavior.
 * ``39bde0d`` - Added ``qsharp_library`` targets and routed them through the
   Q# SDK rider, including generated .NET 6 project support for Q# libraries.
 
+2026-09-25: Channel-aware Nox updates
+--------------------------------------
+
+* ``f9b0f7d`` - Added the ``nox update`` command with stable and development
+  channels, exact-version updates, semantic version comparison, downgrade
+  protection, and detection of Nix-managed installations that must be updated
+  through Nix.
+
 NOTES
 --------------
 
