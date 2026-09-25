@@ -160,7 +160,7 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
             command.args(args).args(&objects).arg("-o").arg(&output);
             run(command)?;
         }
-        TargetKind::Executable { .. } => {
+        TargetKind::Executable { .. } | TargetKind::QSharpLibrary => {
             let linker = linker_for_target(target, &state.linker);
             let mut command = Command::new(linker);
             command.args(args).args(&objects);
@@ -308,9 +308,9 @@ fn build_external_target(
             };
             let project_xml = format!(
                 r#"<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.Quantum.Sdk">
+<Project Sdk="Microsoft.Quantum.Sdk/0.27.253010">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
     <OutputType>{output_type}</OutputType>
   </PropertyGroup>
 </Project>
@@ -557,6 +557,7 @@ fn rider_for_target(target: &Target) -> Option<crate::toolchain::rider::RiderKin
         TargetKind::Executable {
             language: Some(language),
         } => language,
+        TargetKind::QSharpLibrary => return Some(crate::toolchain::rider::RiderKind::QSharp),
         _ => return None,
     };
     match language {

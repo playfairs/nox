@@ -48,6 +48,7 @@ impl TargetLanguage {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TargetKind {
     Executable { language: Option<TargetLanguage> },
+    QSharpLibrary,
     StaticLibrary,
     SharedLibrary,
     RustLibrary,

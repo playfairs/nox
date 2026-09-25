@@ -260,6 +260,7 @@ impl<'a> Parser<'a> {
                     };
                     targets.push(self.target(TargetKind::Executable { language })?)
                 }
+                "qsharp_library" => targets.push(self.target(TargetKind::QSharpLibrary)?),
                 "static_library" | "static" => {
                     targets.push(self.target(TargetKind::StaticLibrary)?)
                 }
