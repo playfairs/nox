@@ -740,6 +740,12 @@ fn install_requires_privilege(root: &Path) -> bool {
     }
 }
 
+fn sudo_command(program: &str) -> Command {
+    let mut command = Command::new("sudo");
+    command.arg(program);
+    command
+}
+
 fn fetch_version(branch: &str) -> Result<SemVersion> {
     let reference = format!("refs/heads/{branch}");
     let commit = Command::new("git")
@@ -1142,6 +1148,13 @@ fn install(
     };
     graph::validate(&project)?;
     executor::build(&project, &state, jobs)?;
+    let requires_privilege = install_requires_privilege(prefix);
+    if requires_privilege {
+        output::warning(format!(
+            "install prefix {} requires elevated permissions; requesting sudo",
+            prefix.display()
+        ));
+    }
     for target in project.targets.iter().filter(|target| target.install) {
         let source = executor::target_artifact_path(
             &state
@@ -1151,11 +1164,31 @@ fn install(
             target,
         );
         let destination_dir = install_directory(prefix, target);
-        fs::create_dir_all(&destination_dir)?;
         let destination = destination_dir.join(source.file_name().ok_or_else(|| {
             Error::Config(format!("invalid artifact path for '{}'", target.name))
         })?);
-        fs::copy(source, &destination)?;
+        if requires_privilege {
+            let mkdir_status = sudo_command("mkdir")
+                .args(["-p"])
+                .arg(&destination_dir)
+                .status()?;
+            if !mkdir_status.success() {
+                return Err(Error::Process(format!(
+                    "sudo mkdir exited with {mkdir_status}"
+                )));
+            }
+            let copy_status = sudo_command("cp")
+                .arg("-p")
+                .arg(source)
+                .arg(&destination)
+                .status()?;
+            if !copy_status.success() {
+                return Err(Error::Process(format!("sudo cp exited with {copy_status}")));
+            }
+        } else {
+            fs::create_dir_all(&destination_dir)?;
+            fs::copy(source, &destination)?;
+        }
         output::action("installed", destination.display());
     }
     Ok(())
@@ -1164,6 +1197,13 @@ fn install(
 fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
     let project = parser::parse_file(&root.join("nox.build"))?;
     graph::validate(&project)?;
+    let requires_privilege = install_requires_privilege(prefix);
+    if requires_privilege {
+        output::warning(format!(
+            "install prefix {} requires elevated permissions; requesting sudo",
+            prefix.display()
+        ));
+    }
     for target in project.targets.iter().filter(|target| target.install) {
         let artifact = executor::target_artifact_path(&PathBuf::from("."), target);
         let destination =
@@ -1171,7 +1211,17 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
                 Error::Config(format!("invalid artifact path for '{}'", target.name))
             })?);
         if destination.exists() {
-            fs::remove_file(&destination)?;
+            if requires_privilege {
+                let status = sudo_command("rm")
+                    .arg("-f")
+                    .arg(&destination)
+                    .status()?;
+                if !status.success() {
+                    return Err(Error::Process(format!("sudo rm exited with {status}")));
+                }
+            } else {
+                fs::remove_file(&destination)?;
+            }
             output::action("uninstalled", destination.display());
         }
     }
