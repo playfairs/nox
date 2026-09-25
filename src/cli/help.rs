@@ -79,7 +79,7 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
             "Usage: nox tasks\n\nList available task names from noxfile in alphabetical order."
         }
         "version" => {
-            "Usage: nox version\n\nPrint the installed Nox version. --version, -V, and -v are also accepted."
+            "Usage: nox version\n\nPrint the installed Nox version and release channel. --version, -V, and -v are also accepted."
         }
         "update" => {
             "Usage: nox update [--dev | --channel CHANNEL | --version VERSION]\n\nUpdate Nox from the latest stable release on master. Use --dev or --channel dev for development releases, --channel stable for stable releases, or --version for an exact release. Nix-managed installations must be updated through Nix."

@@ -4,7 +4,7 @@ A bare `nox` invocation prints help. Every command accepts `--help` and `-h`, fo
 
 ## `nox --help` and `nox version`
 
-Print the command list or the installed version:
+Print the command list or the installed version and release channel:
 
 ```sh
 nox --help

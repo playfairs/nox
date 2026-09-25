@@ -22,6 +22,14 @@ fn version() -> &'static str {
     include_str!("../../VERSION").trim()
 }
 
+fn version_display() -> String {
+    format!("{} (channel: {})", version(), install_channel())
+}
+
+fn install_channel() -> &'static str {
+    option_env!("NOX_INSTALL_CHANNEL").unwrap_or("unknown")
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UpdateChannel {
     Stable,
@@ -52,7 +60,7 @@ pub fn run() -> Result<()> {
     let mut arguments = std::env::args().skip(1);
     let first = arguments.next();
     if matches!(first.as_deref(), Some("--version" | "-V" | "-v")) {
-        output::version("nox", version());
+        output::version("nox", version_display());
         return Ok(());
     }
     let command = match first.as_deref() {
@@ -88,7 +96,7 @@ pub fn run() -> Result<()> {
                 })?);
             }
             "--version" | "-V" | "-v" => {
-                output::version("nox", version());
+                output::version("nox", version_display());
                 return Ok(());
             }
             "--dev" if command == "update" => update_dev = true,
@@ -228,7 +236,7 @@ pub fn run() -> Result<()> {
         };
     }
     if command == "version" {
-        output::version("nox", version());
+        output::version("nox", version_display());
         return Ok(());
     }
     if command == "update" {
@@ -678,6 +686,14 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
     args.extend(["--locked".to_string(), "--force".to_string()]);
     let status = Command::new("cargo")
         .args(&args)
+        .env(
+            "NOX_INSTALL_CHANNEL",
+            match channel {
+                Some(UpdateChannel::Stable) => "stable",
+                Some(UpdateChannel::Dev) => "dev",
+                None => "unknown",
+            },
+        )
         .status()
         .map_err(|error| Error::Process(format!("could not start cargo install: {error}")))?;
     if status.success() {
