@@ -671,6 +671,8 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
         "install".to_string(),
         "--git".to_string(),
         REPOSITORY_URL.to_string(),
+        "--package".to_string(),
+        "nox".to_string(),
     ];
     args.extend(install_args);
     args.extend(["--locked".to_string(), "--force".to_string()]);
