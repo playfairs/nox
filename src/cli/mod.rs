@@ -690,16 +690,25 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
     ];
     args.extend(install_args);
     args.extend(["--locked".to_string(), "--force".to_string()]);
-    let status = Command::new("cargo")
-        .args(&args)
-        .env(
-            "NOX_INSTALL_CHANNEL",
-            match channel {
-                Some(UpdateChannel::Stable) => "stable",
-                Some(UpdateChannel::Dev) => "dev",
-                None => "unknown",
-            },
-        )
+    let channel_name = match channel {
+        Some(UpdateChannel::Stable) => "stable",
+        Some(UpdateChannel::Dev) => "dev",
+        None => "unknown",
+    };
+    let mut command = if install_requires_privilege(install_root) {
+        output::warning(format!(
+            "updating Nox in {} requires elevated permissions; requesting sudo",
+            install_root.display()
+        ));
+        let mut command = Command::new("sudo");
+        command.args(["env", &format!("NOX_INSTALL_CHANNEL={channel_name}"), "cargo"]);
+        command
+    } else {
+        let mut command = Command::new("cargo");
+        command.env("NOX_INSTALL_CHANNEL", channel_name);
+        command
+    };
+    let status = command
         .status()
         .map_err(|error| Error::Process(format!("could not start cargo install: {error}")))?;
     if status.success() {
@@ -709,6 +718,25 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
         Err(Error::Process(format!(
             "cargo install exited with {status}"
         )))
+    }
+}
+
+fn install_requires_privilege(root: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        let Some(root) = root.to_str() else {
+            return true;
+        };
+        return Command::new("test")
+            .args(["-w", root])
+            .status()
+            .map_or(true, |status| !status.success());
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = root;
+        false
     }
 }
 
