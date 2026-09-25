@@ -285,25 +285,25 @@ impl<'a> Parser<'a> {
                 }
                 "qsharp_library" => {
                     output::warning(
-                        "'qsharp_library' is deprecated; use 'library.qsharp' instead. It will be removed in v1.3.0.",
+                        "'qsharp_library' is deprecated; use 'library.qsharp' instead. It will be removed in v1.5.0.",
                     );
                     targets.push(self.target(TargetKind::QSharpLibrary)?)
                 }
                 "static_library" | "static" => {
                     output::warning(
-                        "'static_library' and 'static' are deprecated; use 'library.static' instead. They will be removed in v1.3.0.",
+                        "'static_library' and 'static' are deprecated; use 'library.static' instead. They will be removed in v1.5.0.",
                     );
                     targets.push(self.target(TargetKind::StaticLibrary)?)
                 }
                 "shared_library" | "shared" => {
                     output::warning(
-                        "'shared_library' and 'shared' are deprecated; use 'library.shared' instead. They will be removed in v1.3.0.",
+                        "'shared_library' and 'shared' are deprecated; use 'library.shared' instead. They will be removed in v1.5.0.",
                     );
                     targets.push(self.target(TargetKind::SharedLibrary)?)
                 }
                 "rust_library" => {
                     output::warning(
-                        "'rust_library' is deprecated; use 'library.rust' instead. It will be removed in v1.3.0.",
+                        "'rust_library' is deprecated; use 'library.rust' instead. It will be removed in v1.5.0.",
                     );
                     targets.push(self.target(TargetKind::RustLibrary)?)
                 }

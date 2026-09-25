@@ -205,7 +205,7 @@ library.shared "support" {
 
 The same forms work for C++ sources. The older `static_library`,
 `shared_library`, `static`, and `shared` spellings remain accepted for
-compatibility, but are deprecated and scheduled for removal in `v1.3.0`.
+compatibility, but are deprecated and scheduled for removal in `v1.5.0`.
 
 ### C++ executable or library
 
@@ -270,7 +270,7 @@ library.qsharp "quantum" {
 Rust targets currently use the first source file and invoke `rustc` directly. They are not Cargo packages and do not yet model Rust crate dependencies.
 
 The older `rust_library` and `qsharp_library` spellings remain accepted for
-compatibility, but are deprecated and scheduled for removal in `v1.3.0`.
+compatibility, but are deprecated and scheduled for removal in `v1.5.0`.
 
 ### Kotlin executable
 
