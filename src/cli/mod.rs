@@ -18,6 +18,8 @@ use std::process::Command;
 mod commands;
 mod help;
 
+const REPOSITORY_URL: &str = "https://github.com/playfairs/nox.git";
+
 fn version() -> &'static str {
     include_str!("../../VERSION").trim()
 }
@@ -597,8 +599,6 @@ fn bump_version(
 }
 
 fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Result<()> {
-    const REPOSITORY_URL: &str = "https://github.com/playfairs/nox.git";
-
     if is_nix_managed()? {
         println!(
             "Nox is managed by Nix.\nUpdate Nox through your Nix configuration:\n\n    nix flake update nox\n\nRun this command from your Nix configuration directory."
@@ -706,7 +706,32 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
 }
 
 fn fetch_version(branch: &str) -> Result<SemVersion> {
-    let url = format!("https://raw.githubusercontent.com/playfairs/nox/{branch}/VERSION");
+    let reference = format!("refs/heads/{branch}");
+    let commit = Command::new("git")
+        .args(["ls-remote", "--exit-code", REPOSITORY_URL, &reference])
+        .output()
+        .map_err(|error| {
+            Error::Process(format!("could not query the latest Nox commit: {error}"))
+        })?;
+    if !commit.status.success() {
+        return Err(Error::Process(format!(
+            "could not query the latest Nox commit for channel '{branch}' (git exited with {})",
+            commit.status
+        )));
+    }
+    let commit = String::from_utf8(commit.stdout)
+        .map_err(|error| Error::Process(format!("latest Nox commit was not valid UTF-8: {error}")))?
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| Error::Process("latest Nox commit response was empty".to_string()))?
+        .to_string();
+    let cache_buster = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let url = format!(
+        "https://raw.githubusercontent.com/playfairs/nox/{commit}/VERSION?cachebust={cache_buster}"
+    );
     let response = Command::new("curl")
         .args(["--fail", "--silent", "--show-error", &url])
         .output()
