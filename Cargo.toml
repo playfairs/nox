@@ -1,6 +1,6 @@
 [package]
 name = "nox"
-version = "1.2.6"
+version = "1.2.7"
 edition = "2024"
 description = "The Nox Build & Automation System"
 license = "Unlicense"
