@@ -708,6 +708,7 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
         command.env("NOX_INSTALL_CHANNEL", channel_name);
         command
     };
+    command.args(&args);
     let status = command
         .status()
         .map_err(|error| Error::Process(format!("could not start cargo install: {error}")))?;
