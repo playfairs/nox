@@ -40,10 +40,10 @@ jobs:
         run: |
           set -euo pipefail
           version="$(cat VERSION)"
-          nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
+          NOX_INSTALL_CHANNEL=dev nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
           output="build-ci/release/nox/nox"
           test -x "$output"
-          test "$("$output" --version)" = "nox $version"
+          test "$("$output" --version)" = "nox $version (channel: dev)"
           mkdir -p dist
           cp "$output" "dist/nox-v${version}-linux-x86_64"
       - name: Upload executable
@@ -67,10 +67,10 @@ jobs:
         run: |
           set -euo pipefail
           version="$(cat VERSION)"
-          nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
+          NOX_INSTALL_CHANNEL=dev nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
           output="build-ci/release/nox/nox"
           test -x "$output"
-          test "$("$output" --version)" = "nox $version"
+          test "$("$output" --version)" = "nox $version (channel: dev)"
           mkdir -p dist
           cp "$output" "dist/nox-v${version}-macos-arm64"
       - name: Upload executable
