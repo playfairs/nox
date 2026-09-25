@@ -120,6 +120,12 @@ repository toward NOML-backed configuration instead of hard-coded behavior.
 * ``edda41f`` - Sorted the ``nox riders`` output and cleaned up the resulting
   CLI listing for stable, easier-to-scan output.
 
+2026-09-25: Q# library targets
+------------------------------
+
+* ``39bde0d`` - Added ``qsharp_library`` targets and routed them through the
+  Q# SDK rider, including generated .NET 6 project support for Q# libraries.
+
 NOTES
 --------------
 
