@@ -120,3 +120,9 @@ nox install pkgs:package
 The GitHub form clones the repository into a temporary directory, requires a valid `nox.build`, validates the project graph, and then runs the same build and install logic used for a local project. The registry form fetches the public JSON index, resolves the package name to a GitHub source, and then follows the same validation workflow.
 
 Registry entries are small JSON documents with fields for `name`, `description`, `url`, `language`, and `riders.commands`. The registry is authoritative only as a lookup layer; Nox still validates the actual repository and will reject missing Rider commands, missing `nox.build` files, or invalid graph definitions.
+
+## Installed package database
+
+Every successful install records the project name, description, license, detected language and Riders, package-declared Rider commands, installation method, optional GitHub URL or local source path, and exact installed artifact paths. Local, direct GitHub, and registry installs all write through the shared installer after copying artifacts.
+
+`nox packages list` and `nox packages NAME` read this local database; only `nox packages search QUERY` reads the public registry. `nox uninstall NAME` removes the recorded artifact paths and then deletes the corresponding database records. The JSON database is stored in the platform's Nox application data directory and can be redirected with `NOX_PACKAGE_DB`.

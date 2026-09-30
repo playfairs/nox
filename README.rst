@@ -86,6 +86,18 @@ and builds automatically when the build directory does not exist:
 
    nox install --prefix "$HOME/.local"
 
+Successful local and remote installs are recorded in Nox's installed-package
+database. List installed packages, inspect one, search the public registry, or
+remove an installed package by name:
+
+.. code-block:: sh
+
+   nox install .
+   nox packages list
+   nox packages <package>
+   nox packages search <package>
+   nox uninstall <package>
+
 Nox can also install a valid remote Nox project from GitHub or from the public
 package registry:
 

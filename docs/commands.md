@@ -133,6 +133,7 @@ The default prefix is `/usr/local` on Unix-like platforms and `C:\\Program Files
 
 ```sh
 nox install
+nox install .
 nox install --prefix "$HOME/.local"
 sudo nox install --release
 ```
@@ -141,24 +142,37 @@ Executables go to `bin`; libraries go to `lib`.
 The command also accepts a remote source reference for valid Nox projects hosted on GitHub or published in the public registry:
 
 ```sh
-nox install github:playfairs/ripnet
-nox install pkgs:ripnet
+nox install github:user/repo
+nox install pkgs:<package>
 ```
 
 A GitHub source must resolve to a repository that contains a valid `nox.build` and passes the same project validation, build graph checks, and Rider checks as any local Nox project. A `pkgs:` install resolves the package name through the public registry and then installs that GitHub source through the same pipeline.
 
-## `nox packages [search|info] [QUERY]`
+Successful local, GitHub, and registry installs are recorded in Nox's installed-package database. The database stores project metadata, installation method, source URL or local path, and the paths of installed artifacts.
 
-List or inspect the public Nox package registry.
+## `nox packages [list|search QUERY|NAME]`
+
+List installed packages or show information about an installed package. Use `search` to query the public registry.
 
 ```sh
 nox packages
-nox packages search ripnet
-nox packages info ripnet
-nox pkgs ripnet
+nox packages <package>
+nox packages <package>
+nox packages search <package>
 ```
 
-The registry is served as JSON from the canonical package index at `https://pkgs.noxbuild.cc/packages.json` and maps package names to Nox-installable GitHub sources. Package entries may declare Rider requirements such as `cargo` or `dmd` and Nox verifies those requirements before installation.
+`nox packages` and `nox packages list` read only the local installed-package database. `nox packages NAME` displays details for an installed package and reports an error if it is not installed. Only `nox packages search QUERY` fetches the public registry at `https://pkgs.noxbuild.cc/packages.json`.
+
+The database is stored at `~/Library/Application Support/nox/installed-packages.json` on macOS, `$XDG_DATA_HOME/nox/installed-packages.json` on Linux (or `~/.local/share/nox/installed-packages.json` when `XDG_DATA_HOME` is unset), and `%APPDATA%\nox\installed-packages.json` on Windows. Set `NOX_PACKAGE_DB` to use a different database file.
+
+## `nox uninstall [PACKAGE]`
+
+Remove a package by name using its recorded installed artifact paths. This removes the package's files and database entries without rebuilding it. With no package name, `nox uninstall` keeps its existing behavior and uninstalls the current project according to its `nox.build`.
+
+```sh
+nox uninstall <package>
+nox uninstall
+```
 ## `nox run [PATH|TARGET] [-- ARGS...]`
 
 Run either the current project, a named project target, or one source file. An existing source file runs standalone and does not require `nox.build` or `nox setup`; Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically. With no path, `.`, or a target name, Nox runs the initialized project.
