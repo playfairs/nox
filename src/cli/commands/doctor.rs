@@ -9,9 +9,14 @@ pub fn run(root: &Path, build_dir: &Path, requested_project: Option<&str>) -> Re
     output::section("overview");
     output::key_value("command", "doctor");
     output::path_value("nox.build", root.join("nox.build").display());
-    output::path_value("nox.state", super::super::project_config_path(root).display());
+    output::path_value(
+        "nox.state",
+        super::super::project_config_path(root).display(),
+    );
     match super::super::configured_build_dir(root)? {
-        Some(configured_dir) => output::path_value("configured build dir", configured_dir.display()),
+        Some(configured_dir) => {
+            output::path_value("configured build dir", configured_dir.display())
+        }
         None => output::warning("no project build directory is configured in nox.state"),
     }
 
