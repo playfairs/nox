@@ -11,6 +11,7 @@ use crate::rules::base::BaseRules;
 use crate::run;
 use crate::task;
 use crate::toolchain::{detection, rider};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -225,7 +226,12 @@ pub fn run() -> Result<()> {
         } else {
             std::env::current_dir()?.join(prefix)
         };
-        return crate::pkgs::handlers::install_from_reference(source, &prefix, &configuration, jobs);
+        return crate::pkgs::handlers::install_from_reference(
+            source,
+            &prefix,
+            &configuration,
+            jobs,
+        );
     }
     let command_rule = base_rules
         .command(&command)
@@ -286,6 +292,16 @@ pub fn run() -> Result<()> {
     if matches!(command.as_str(), "packages" | "pkgs") {
         return crate::pkgs::handlers::run_package_command(&positional);
     }
+    if command == "uninstall" {
+        if let Some(package) = positional.first() {
+            if positional.len() > 1 {
+                return Err(Error::Config(
+                    "uninstall accepts only one installed package name".to_string(),
+                ));
+            }
+            return uninstall_installed_package(package);
+        }
+    }
     if command == "install" {
         if let Some(source) = positional.first() {
             let source = source.as_str();
@@ -295,7 +311,12 @@ pub fn run() -> Result<()> {
                 } else {
                     std::env::current_dir()?.join(prefix)
                 };
-                return crate::pkgs::handlers::install_from_reference(source, &prefix, &configuration, jobs);
+                return crate::pkgs::handlers::install_from_reference(
+                    source,
+                    &prefix,
+                    &configuration,
+                    jobs,
+                );
             }
         }
     }
@@ -337,11 +358,9 @@ pub fn run() -> Result<()> {
 }
 
 fn package_reference(arguments: &[String]) -> Option<&str> {
-    arguments.iter().find_map(|argument| {
-        argument
-            .find("pkgs:")
-            .map(|index| &argument[index..])
-    })
+    arguments
+        .iter()
+        .find_map(|argument| argument.find("pkgs:").map(|index| &argument[index..]))
 }
 
 fn standalone_file(input: &str) -> Option<PathBuf> {
@@ -528,13 +547,17 @@ fn run_with_project(
             } else {
                 root.join(prefix)
             };
+            let requested_project = positional
+                .first()
+                .filter(|project| !Path::new(project).is_dir())
+                .map(String::as_str);
             install_project(
                 &root,
                 &state_dir,
                 &configuration,
                 jobs,
                 &prefix,
-                positional.first().map(String::as_str),
+                requested_project,
             )
         }
         "uninstall" => {
@@ -738,7 +761,11 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
             install_root.display()
         ));
         let mut command = Command::new("sudo");
-        command.args(["env", &format!("NOX_INSTALL_CHANNEL={channel_name}"), "cargo"]);
+        command.args([
+            "env",
+            &format!("NOX_INSTALL_CHANNEL={channel_name}"),
+            "cargo",
+        ]);
         command
     } else {
         let mut command = Command::new("cargo");
@@ -762,11 +789,18 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
 fn install_requires_privilege(root: &Path) -> bool {
     #[cfg(unix)]
     {
-        let Some(root) = root.to_str() else {
+        let mut permission_path = root;
+        while !permission_path.exists() {
+            let Some(parent) = permission_path.parent() else {
+                break;
+            };
+            permission_path = parent;
+        }
+        let Some(permission_path) = permission_path.to_str() else {
             return true;
         };
         return Command::new("test")
-            .args(["-w", root])
+            .args(["-w", permission_path])
             .status()
             .map_or(true, |status| !status.success());
     }
@@ -833,10 +867,7 @@ fn is_nix_managed() -> Result<bool> {
     let executable = invoked_executable()?;
     let explicit_path = std::env::args_os().next().is_some_and(|argument| {
         let path = Path::new(&argument);
-        path.is_absolute()
-            || path
-                .parent()
-                .is_some_and(|parent| parent != Path::new(""))
+        path.is_absolute() || path.parent().is_some_and(|parent| parent != Path::new(""))
     });
     let path = fs::canonicalize(&executable).unwrap_or(executable);
     if is_nix_managed_path(&path) {
@@ -858,10 +889,7 @@ fn is_nix_managed() -> Result<bool> {
 fn invoked_executable() -> Result<PathBuf> {
     let invoked = std::env::args_os().next().map(PathBuf::from);
     let explicit_path = invoked.as_ref().filter(|path| {
-        path.is_absolute()
-            || path
-                .parent()
-                .is_some_and(|parent| parent != Path::new(""))
+        path.is_absolute() || path.parent().is_some_and(|parent| parent != Path::new(""))
     });
     Ok(explicit_path.cloned().unwrap_or(std::env::current_exe()?))
 }
@@ -1174,6 +1202,58 @@ pub(crate) fn install_project(
     prefix: &Path,
     requested_project: Option<&str>,
 ) -> Result<()> {
+    let origin = crate::pkgs::database::InstallOrigin {
+        method: crate::pkgs::database::InstallMethod::Local,
+        url: None,
+        path: Some(root.to_path_buf()),
+    };
+    install_project_with_origin(
+        root,
+        build_dir,
+        configuration,
+        jobs,
+        prefix,
+        requested_project,
+        origin,
+        None,
+    )
+}
+
+pub(crate) fn install_project_with_origin(
+    root: &Path,
+    build_dir: &Path,
+    configuration: &str,
+    jobs: usize,
+    prefix: &Path,
+    requested_project: Option<&str>,
+    origin: crate::pkgs::database::InstallOrigin,
+    registry_package: Option<&crate::pkgs::Package>,
+) -> Result<()> {
+    let database_path = crate::pkgs::database::database_path()?;
+    install_project_with_origin_to_database(
+        root,
+        build_dir,
+        configuration,
+        jobs,
+        prefix,
+        requested_project,
+        origin,
+        registry_package,
+        &database_path,
+    )
+}
+
+fn install_project_with_origin_to_database(
+    root: &Path,
+    build_dir: &Path,
+    configuration: &str,
+    jobs: usize,
+    prefix: &Path,
+    requested_project: Option<&str>,
+    origin: crate::pkgs::database::InstallOrigin,
+    registry_package: Option<&crate::pkgs::Package>,
+    database_path: &Path,
+) -> Result<()> {
     let needs_setup = !BuildState::path(build_dir).exists()
         || BuildState::load(build_dir)?.configuration != configuration;
     if needs_setup {
@@ -1193,6 +1273,7 @@ pub(crate) fn install_project(
             prefix.display()
         ));
     }
+    let mut installed_to = Vec::new();
     for target in project.targets.iter().filter(|target| target.install) {
         let source = executor::target_artifact_path(
             &state
@@ -1228,8 +1309,79 @@ pub(crate) fn install_project(
             fs::copy(source, &destination)?;
         }
         output::action("installed", destination.display());
+        installed_to.push(destination);
+    }
+    if !installed_to.is_empty() {
+        let mut languages = BTreeSet::new();
+        let mut riders = BTreeSet::new();
+        for target in project.targets.iter().filter(|target| target.install) {
+            for source in &target.sources {
+                if let Some(target_rider) = rider::for_source(source) {
+                    riders.insert(target_rider.name.to_string());
+                    languages.insert(
+                        target_rider
+                            .name
+                            .strip_suffix(" Rider")
+                            .unwrap_or(target_rider.name)
+                            .to_string(),
+                    );
+                }
+            }
+        }
+        let package = installed_package_record(&project, &origin, registry_package, installed_to);
+        let mut database =
+            crate::pkgs::database::InstalledPackageDatabase::load_from(database_path)?;
+        database.record(package);
+        database.save_to(database_path)?;
     }
     Ok(())
+}
+
+fn installed_package_record(
+    project: &crate::core::model::Project,
+    origin: &crate::pkgs::database::InstallOrigin,
+    registry_package: Option<&crate::pkgs::Package>,
+    installed_to: Vec<PathBuf>,
+) -> crate::pkgs::database::InstalledPackage {
+    let mut languages = BTreeSet::new();
+    let mut riders = BTreeSet::new();
+    for target in project.targets.iter().filter(|target| target.install) {
+        for source in &target.sources {
+            if let Some(target_rider) = rider::for_source(source) {
+                riders.insert(target_rider.name.to_string());
+                languages.insert(
+                    target_rider
+                        .name
+                        .strip_suffix(" Rider")
+                        .unwrap_or(target_rider.name)
+                        .to_string(),
+                );
+            }
+        }
+    }
+    crate::pkgs::database::InstalledPackage {
+        name: registry_package
+            .map(|package| package.name.clone())
+            .unwrap_or_else(|| project.name.clone()),
+        description: registry_package
+            .and_then(|package| package.description.clone())
+            .filter(|description| !description.is_empty())
+            .unwrap_or_else(|| project.description.clone()),
+        license: project.license.clone(),
+        language: registry_package
+            .and_then(|package| package.language.clone())
+            .filter(|language| !language.is_empty())
+            .map(|language| vec![language])
+            .unwrap_or_else(|| languages.into_iter().collect()),
+        riders: riders.into_iter().collect(),
+        required_commands: registry_package
+            .map(|package| package.riders.commands.clone())
+            .unwrap_or_default(),
+        method: origin.method.clone(),
+        url: origin.url.clone(),
+        path: origin.path.clone(),
+        installed_to,
+    }
 }
 
 fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
@@ -1250,10 +1402,7 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
             })?);
         if destination.exists() {
             if requires_privilege {
-                let status = sudo_command("rm")
-                    .arg("-f")
-                    .arg(&destination)
-                    .status()?;
+                let status = sudo_command("rm").arg("-f").arg(&destination).status()?;
                 if !status.success() {
                     return Err(Error::Process(format!("sudo rm exited with {status}")));
                 }
@@ -1263,6 +1412,45 @@ fn uninstall(root: &Path, prefix: &Path) -> Result<()> {
             output::action("uninstalled", destination.display());
         }
     }
+    Ok(())
+}
+
+fn uninstall_installed_package(name: &str) -> Result<()> {
+    let database_path = crate::pkgs::database::database_path()?;
+    uninstall_installed_package_from(name, &database_path)
+}
+
+fn uninstall_installed_package_from(name: &str, database_path: &Path) -> Result<()> {
+    let mut database = crate::pkgs::database::InstalledPackageDatabase::load_from(database_path)?;
+    let packages = database.find(name).into_iter().cloned().collect::<Vec<_>>();
+    if packages.is_empty() {
+        return Err(Error::Config(format!("package '{name}' is not installed")));
+    }
+
+    let destinations = packages
+        .iter()
+        .flat_map(|package| package.installed_to.iter())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    for destination in destinations {
+        if !destination.exists() {
+            continue;
+        }
+        let parent = destination.parent().unwrap_or(&destination);
+        if install_requires_privilege(parent) {
+            let status = sudo_command("rm").arg("-f").arg(&destination).status()?;
+            if !status.success() {
+                return Err(Error::Process(format!("sudo rm exited with {status}")));
+            }
+        } else {
+            fs::remove_file(&destination)?;
+        }
+        output::action("uninstalled", destination.display());
+    }
+
+    database.remove(name);
+    database.save_to(database_path)?;
+    output::action("removed package record", name);
     Ok(())
 }
 
@@ -1353,12 +1541,16 @@ fn default_install_prefix() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        bump_version, is_nix_managed_path, package_reference, parse_semver, run_with_project,
-        standalone_file, version_files,
+        bump_version, install_project_with_origin_to_database, installed_package_record,
+        is_nix_managed_path, package_reference, parse_semver, run_with_project, standalone_file,
+        uninstall_installed_package_from, version_files,
+    };
+    use crate::pkgs::database::{
+        InstallMethod, InstallOrigin, InstalledPackage, InstalledPackageDatabase,
     };
     use crate::rules::base::BaseRules;
     use std::fs;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn resolves_short_command_aliases() {
@@ -1376,12 +1568,147 @@ mod tests {
 
     #[test]
     fn finds_package_reference_in_forwarded_arguments() {
-        let arguments = vec![
-            "install".to_string(),
-            "source=pkgs:ripnet".to_string(),
-        ];
+        let arguments = vec!["install".to_string(), "source=pkgs:ripnet".to_string()];
         assert_eq!(package_reference(&arguments), Some("pkgs:ripnet"));
         assert_eq!(package_reference(&["install".to_string()]), None);
+    }
+
+    #[test]
+    fn uninstall_removes_recorded_artifact_and_database_entry() {
+        let root =
+            std::env::temp_dir().join(format!("nox-uninstall-package-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let destination = root.join("prefix/bin/demo");
+        fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        fs::write(&destination, "installed artifact").unwrap();
+
+        let database_path = root.join("data/installed-packages.json");
+        let mut database = InstalledPackageDatabase::default();
+        database.record(InstalledPackage {
+            name: "demo".to_string(),
+            description: "test package".to_string(),
+            license: "MIT".to_string(),
+            language: vec!["C".to_string()],
+            riders: vec!["C Rider".to_string()],
+            required_commands: Vec::new(),
+            method: InstallMethod::Local,
+            url: None,
+            path: Some(root.clone()),
+            installed_to: vec![destination.clone()],
+        });
+        database.save_to(&database_path).unwrap();
+
+        uninstall_installed_package_from("demo", &database_path).unwrap();
+
+        assert!(!destination.exists());
+        assert!(InstalledPackageDatabase::load_from(&database_path)
+            .unwrap()
+            .packages
+            .is_empty());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn records_project_and_registry_metadata_with_install_origin() {
+        let root = std::env::temp_dir().join(format!("nox-package-record-{}", std::process::id()));
+        let project = crate::project::parser::parse(
+            "project \"demo\" { description = \"Local description\" license = \"MIT\" executable \"demo\" { sources = [\"main.c\"] install = true } }",
+            &root,
+        )
+        .unwrap();
+        let registry_package = crate::pkgs::Package {
+            name: "demo-package".to_string(),
+            description: Some("Registry description".to_string()),
+            url: "github:owner/demo".to_string(),
+            language: Some("c".to_string()),
+            riders: crate::pkgs::PackageRiders::from_commands(vec!["cc"]),
+        };
+        let origin = InstallOrigin {
+            method: InstallMethod::Registry,
+            url: Some(registry_package.url.clone()),
+            path: None,
+        };
+        let installed_to = vec![PathBuf::from("/tmp/prefix/bin/demo")];
+
+        let record = installed_package_record(
+            &project,
+            &origin,
+            Some(&registry_package),
+            installed_to.clone(),
+        );
+
+        assert_eq!(record.name, "demo-package");
+        assert_eq!(record.description, "Registry description");
+        assert_eq!(record.license, "MIT");
+        assert_eq!(record.language, vec!["c"]);
+        assert_eq!(record.riders, vec!["C Rider"]);
+        assert_eq!(record.required_commands, vec!["cc"]);
+        assert_eq!(record.method, InstallMethod::Registry);
+        assert_eq!(record.url.as_deref(), Some("github:owner/demo"));
+        assert_eq!(record.installed_to, installed_to);
+
+        let local_origin = InstallOrigin {
+            method: InstallMethod::Local,
+            url: None,
+            path: Some(root.clone()),
+        };
+        let local_record = installed_package_record(&project, &local_origin, None, Vec::new());
+        assert_eq!(local_record.name, "demo");
+        assert_eq!(local_record.description, "Local description");
+        assert_eq!(local_record.path, Some(root));
+        assert_eq!(local_record.url, None);
+    }
+
+    #[test]
+    fn installs_local_project_and_records_it_for_uninstall() {
+        let root = std::env::temp_dir().join(format!("nox-install-package-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("main.rs"), "fn main() {}\n").unwrap();
+        fs::write(
+            root.join("nox.build"),
+            "project \"fixture\" { description = \"Local fixture\" license = \"MIT\" executable.rust \"fixture\" { sources = [\"main.rs\"] install = true } }",
+        )
+        .unwrap();
+
+        let database_path = root.join("data/installed-packages.json");
+        let prefix = root.join("prefix");
+        install_project_with_origin_to_database(
+            &root,
+            &root.join("build"),
+            "debug",
+            1,
+            &prefix,
+            None,
+            InstallOrigin {
+                method: InstallMethod::Local,
+                url: None,
+                path: Some(root.clone()),
+            },
+            None,
+            &database_path,
+        )
+        .unwrap();
+
+        let destination = prefix.join("bin/fixture");
+        assert!(destination.is_file());
+        let database = InstalledPackageDatabase::load_from(&database_path).unwrap();
+        let records = database.find("fixture");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].method, InstallMethod::Local);
+        assert_eq!(records[0].path, Some(root.clone()));
+        assert_eq!(records[0].license, "MIT");
+        assert_eq!(records[0].language, vec!["Rust"]);
+        assert_eq!(records[0].riders, vec!["Rust Rider"]);
+        assert_eq!(records[0].installed_to, vec![destination.clone()]);
+
+        uninstall_installed_package_from("fixture", &database_path).unwrap();
+        assert!(!destination.exists());
+        assert!(InstalledPackageDatabase::load_from(&database_path)
+            .unwrap()
+            .packages
+            .is_empty());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

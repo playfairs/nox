@@ -100,7 +100,7 @@ ruleset "commands" {
     },
     command: packages {
         aliases: ["pkgs"]
-        description: ["List or inspect Nox packages in the public registry."]
+        description: ["List or inspect installed packages, or search the public registry."]
         rules: {
             accepts_files_as_input: false
             requires_initialization: false
@@ -109,7 +109,7 @@ ruleset "commands" {
     },
     command: uninstall {
         aliases: []
-        description: ["Uninstall the current project."]
+        description: ["Uninstall an installed package or the current project."]
         rules: {
             accepts_files_as_input: false
             requires_initialization: false

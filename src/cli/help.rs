@@ -44,10 +44,10 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
             "Usage: nox doctor [-C BUILD_DIR]\n\nInspect the project, selected build directory, loaded configuration, and state files to help diagnose setup issues.\n\nExamples:\n  nox doctor\n  nox doc -C build"
         }
         "install" => {
-            "Usage: nox install [OPTIONS]\n\nConfigure if needed, compile, and install targets marked install = true. Executables go to bin and libraries go to lib under the prefix.\n\nAliases: nox i.\n\nExamples:\n  nox install --release\n  nox i --prefix ~/.local"
+            "Usage: nox install [PATH|PROJECT|SOURCE] [OPTIONS]\n\nInstall the current project or a selected local project. GitHub and registry sources are installed with 'nox install github:OWNER/REPO' and 'nox install pkgs:NAME'. Successful installs are recorded for 'nox packages list' and 'nox uninstall NAME'.\n\nAliases: nox i.\n\nExamples:\n  nox install .\n  nox install --release\n  nox install github:owner/repo\n  nox install pkgs:example"
         }
         "uninstall" => {
-            "Usage: nox uninstall [--prefix PATH]\n\nRemove installed targets without compiling. The project definition determines which artifacts belong to Nox.\n\nExample:\n  nox uninstall --prefix ~/.local"
+            "Usage: nox uninstall [PACKAGE] [--prefix PATH]\n\nRemove one recorded package and its installed files, or uninstall the current project when PACKAGE is omitted.\n\nExamples:\n  nox uninstall example\n  nox uninstall --prefix ~/.local"
         }
         "validate" => {
             "Usage: nox validate\n\nParse nox.build without compiling. Check duplicate names, unknown dependencies, dependency cycles, and targets without sources."
@@ -59,7 +59,7 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
             "Usage: nox riders\n\nList the language and toolchain Riders compiled into Nox. Riders map source extensions to compiler or interpreter backends."
         }
         "packages" | "pkgs" => {
-            "Usage: nox packages [search|info] [QUERY]\n\nQuery the public Nox package registry and inspect package metadata, source URLs, and Rider requirements.\n\nExamples:\n  nox packages\n  nox packages search ripnet\n  nox packages info ripnet\n  nox pkgs ripnet"
+            "Usage: nox packages [list|search QUERY|NAME]\n\nList installed packages or show information about an installed package. Search the public registry with 'nox packages search QUERY'.\n\nExamples:\n  nox packages list\n  nox packages ripnet\n  nox packages search ripnet"
         }
         "targets" | "list" => {
             "Usage: nox targets\n\nPrint every target declared in nox.build, one per line.\n\nAliases: nox list."

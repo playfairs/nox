@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 
 pub mod fetch;
 pub mod handlers;
+pub mod database;
 
 pub const REGISTRY_URL: &str = "https://pkgs.noxbuild.cc/packages.json";
 
