@@ -107,3 +107,16 @@ Only targets with `install = true` are copied. The destination is selected from 
 - shared library: `<prefix>/lib/<target>`
 
 The default Unix prefix is `/usr/local`. Use `--prefix` for a user-owned location.
+
+## Package registry and remote sources
+
+Nox can install a valid remote project through either a GitHub source or the Nox package registry:
+
+```sh
+nox install github:user/repo
+nox install pkgs:package
+```
+
+The GitHub form clones the repository into a temporary directory, requires a valid `nox.build`, validates the project graph, and then runs the same build and install logic used for a local project. The registry form fetches the public JSON index, resolves the package name to a GitHub source, and then follows the same validation workflow.
+
+Registry entries are small JSON documents with fields for `name`, `description`, `url`, `language`, and `riders.commands`. The registry is authoritative only as a lookup layer; Nox still validates the actual repository and will reject missing Rider commands, missing `nox.build` files, or invalid graph definitions.

@@ -14,6 +14,7 @@ pub fn print(command: &str) {
   validate              Check nox.build and dependencies
   status, stat          Show configuration and toolchains
   riders                List supported language backends
+  packages, pkgs        Inspect the public Nox package registry
   targets, list         List declared targets
   graph                 Show dependency order
   run, r                Compile and run a target
@@ -56,6 +57,9 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
         }
         "riders" => {
             "Usage: nox riders\n\nList the language and toolchain Riders compiled into Nox. Riders map source extensions to compiler or interpreter backends."
+        }
+        "packages" | "pkgs" => {
+            "Usage: nox packages [search|info] [QUERY]\n\nQuery the public Nox package registry and inspect package metadata, source URLs, and Rider requirements.\n\nExamples:\n  nox packages\n  nox packages search ripnet\n  nox packages info ripnet\n  nox pkgs ripnet"
         }
         "targets" | "list" => {
             "Usage: nox targets\n\nPrint every target declared in nox.build, one per line.\n\nAliases: nox list."

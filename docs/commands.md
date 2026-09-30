@@ -138,7 +138,27 @@ sudo nox install --release
 ```
 
 Executables go to `bin`; libraries go to `lib`.
+The command also accepts a remote source reference for valid Nox projects hosted on GitHub or published in the public registry:
 
+```sh
+nox install github:playfairs/ripnet
+nox install pkgs:ripnet
+```
+
+A GitHub source must resolve to a repository that contains a valid `nox.build` and passes the same project validation, build graph checks, and Rider checks as any local Nox project. A `pkgs:` install resolves the package name through the public registry and then installs that GitHub source through the same pipeline.
+
+## `nox packages [search|info] [QUERY]`
+
+List or inspect the public Nox package registry.
+
+```sh
+nox packages
+nox packages search ripnet
+nox packages info ripnet
+nox pkgs ripnet
+```
+
+The registry is served as JSON from the canonical package index at `https://pkgs.noxbuild.cc/packages.json` and maps package names to Nox-installable GitHub sources. Package entries may declare Rider requirements such as `cargo` or `dmd` and Nox verifies those requirements before installation.
 ## `nox run [PATH|TARGET] [-- ARGS...]`
 
 Run either the current project, a named project target, or one source file. An existing source file runs standalone and does not require `nox.build` or `nox setup`; Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically. With no path, `.`, or a target name, Nox runs the initialized project.

@@ -86,6 +86,19 @@ and builds automatically when the build directory does not exist:
 
    nox install --prefix "$HOME/.local"
 
+Nox can also install a valid remote Nox project from GitHub or from the public
+package registry:
+
+.. code-block:: sh
+
+   nox install github:playfairs/ripnet
+   nox install pkgs:ripnet
+
+Both forms require the fetched repository to contain a valid ``nox.build`` and
+pass the same project-validation and toolchain checks as a local project. The
+package registry only resolves a package name to a GitHub source; it does not
+bypass Nox's own build and Rider validation.
+
 To install Nox itself from a source checkout, bootstrap the executable once
 with Cargo, then let Nox handle the rest:
 

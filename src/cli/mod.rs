@@ -214,6 +214,19 @@ pub fn run() -> Result<()> {
         help::print(&command);
         return Ok(());
     }
+    let package_reference = match command.as_str() {
+        "install" => package_reference(&positional),
+        "run" => package_reference(&run_arguments),
+        _ => None,
+    };
+    if let Some(source) = package_reference {
+        let prefix = if prefix.is_absolute() {
+            prefix
+        } else {
+            std::env::current_dir()?.join(prefix)
+        };
+        return crate::pkgs::handlers::install_from_reference(source, &prefix, &configuration, jobs);
+    }
     let command_rule = base_rules
         .command(&command)
         .ok_or_else(|| Error::Config(format!("unknown command '{command}'")))?;
@@ -270,6 +283,22 @@ pub fn run() -> Result<()> {
         }
         return Ok(());
     }
+    if matches!(command.as_str(), "packages" | "pkgs") {
+        return crate::pkgs::handlers::run_package_command(&positional);
+    }
+    if command == "install" {
+        if let Some(source) = positional.first() {
+            let source = source.as_str();
+            if source.starts_with("github:") {
+                let prefix = if prefix.is_absolute() {
+                    prefix
+                } else {
+                    std::env::current_dir()?.join(prefix)
+                };
+                return crate::pkgs::handlers::install_from_reference(source, &prefix, &configuration, jobs);
+            }
+        }
+    }
     if command == "nomlfmt" {
         let input = positional.first().ok_or_else(|| {
             Error::Config("nomlfmt requires a NOML file or directory".to_string())
@@ -305,6 +334,14 @@ pub fn run() -> Result<()> {
         );
     }
     Err(Error::Config(format!("unknown command '{command}'")))
+}
+
+fn package_reference(arguments: &[String]) -> Option<&str> {
+    arguments.iter().find_map(|argument| {
+        argument
+            .find("pkgs:")
+            .map(|index| &argument[index..])
+    })
 }
 
 fn standalone_file(input: &str) -> Option<PathBuf> {
@@ -491,7 +528,7 @@ fn run_with_project(
             } else {
                 root.join(prefix)
             };
-            install(
+            install_project(
                 &root,
                 &state_dir,
                 &configuration,
@@ -1129,7 +1166,7 @@ fn write_project_config(root: &Path, build_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn install(
+pub(crate) fn install_project(
     root: &Path,
     build_dir: &Path,
     configuration: &str,
@@ -1316,8 +1353,8 @@ fn default_install_prefix() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        bump_version, is_nix_managed_path, parse_semver, run_with_project, standalone_file,
-        version_files,
+        bump_version, is_nix_managed_path, package_reference, parse_semver, run_with_project,
+        standalone_file, version_files,
     };
     use crate::rules::base::BaseRules;
     use std::fs;
@@ -1335,6 +1372,16 @@ mod tests {
         assert_eq!(rules.command_name("doc"), Some("doctor"));
         assert_eq!(rules.command_name("env"), Some("env"));
         assert_eq!(rules.command_name("debug"), None);
+    }
+
+    #[test]
+    fn finds_package_reference_in_forwarded_arguments() {
+        let arguments = vec![
+            "install".to_string(),
+            "source=pkgs:ripnet".to_string(),
+        ];
+        assert_eq!(package_reference(&arguments), Some("pkgs:ripnet"));
+        assert_eq!(package_reference(&["install".to_string()]), None);
     }
 
     #[test]

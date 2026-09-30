@@ -98,6 +98,15 @@ ruleset "commands" {
             requires_project: true
         }
     },
+    command: packages {
+        aliases: ["pkgs"]
+        description: ["List or inspect Nox packages in the public registry."]
+        rules: {
+            accepts_files_as_input: false
+            requires_initialization: false
+            requires_project: false
+        }
+    },
     command: uninstall {
         aliases: []
         description: ["Uninstall the current project."]

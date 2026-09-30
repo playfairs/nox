@@ -2,6 +2,7 @@ pub mod build_system;
 pub mod cli;
 pub mod core;
 pub mod init;
+pub mod pkgs;
 pub mod project;
 pub mod rules;
 pub mod run;
