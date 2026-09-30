@@ -99,7 +99,12 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
         crate::core::output::action("built", output.display());
         return Ok(());
     }
-    if let Some(rider) = rider_for_target(target) {
+    let rider = rider_for_target(target).or_else(|| {
+        target.sources.first().and_then(|source| {
+            crate::toolchain::rider::for_source(source.as_path()).map(|rider| rider.kind)
+        })
+    });
+    if let Some(rider) = rider {
         if !matches!(
             rider,
             crate::toolchain::rider::RiderKind::C | crate::toolchain::rider::RiderKind::Cpp
@@ -330,7 +335,10 @@ fn build_external_target(
         }
         crate::toolchain::rider::RiderKind::Swift => {
             let mut command = Command::new(tool);
-            command.args(&target.sources).arg("-o").arg(&output);
+            command.args(&target.sources);
+            command.args(&target.flags);
+            command.args(&state.compile_flags);
+            command.arg("-o").arg(&output);
             run(command)?;
         }
         crate::toolchain::rider::RiderKind::Zig => {

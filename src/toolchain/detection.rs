@@ -60,13 +60,18 @@ pub fn detect_rider(kind: RiderKind) -> Result<String> {
             ));
         }
     };
+    let version_argument = if kind == RiderKind::Go {
+        "version"
+    } else {
+        "--version"
+    };
     candidates
         .iter()
         .find(|candidate| {
             Command::new(candidate)
-                .arg("--version")
-                .status()
-                .is_ok_and(|status| status.success())
+                .arg(version_argument)
+                .output()
+                .is_ok_and(|output| output.status.success())
         })
         .map(|candidate| (*candidate).to_string())
         .ok_or_else(|| Error::Config(format!("toolchain for {:?} Rider was not found", kind)))
