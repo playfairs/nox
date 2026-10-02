@@ -115,15 +115,19 @@ nox status
 nox stat
 ```
 
-## `nox riders`
+## `nox riders [install <language>]`
 
-List the language and toolchain Riders available to the current Nox binary:
+List the language and toolchain Riders available to the current Nox binary, or install a Rider's toolchain:
 
 ```sh
 nox riders
+nox riders install rust
+nox riders install ruby
 ```
 
-Riders include C, C++, Rust, Haskell, Go, Java, C#, Swift, Zig, Python, JavaScript, TypeScript, and Kotlin. Each Rider has a direct backend action path; builds report a clear toolchain error when the required compiler or interpreter is not installed.
+Riders include C, C++, Rust, Haskell, Go, Java, C#, Q#, Swift, Zig, Python, JavaScript, TypeScript, Kotlin, Ruby, F#, Lua, and PHP. Lua and PHP, like Ruby and F#, can be run directly from source files. If Nix is installed or Nox itself is Nix-managed, `nox riders install <language>` immediately prints Nix profile commands (`nix profile add nixpkgs#...`) for supported nixpkgs tool choices and the profile destination; unavailable nixpkgs packages are omitted. It does not prompt for a selection or install anything. Choose and run the suggested command(s) yourself. Nox will not invoke another package manager in this case. Otherwise, it uses an installed Homebrew, APT, DNF, or Pacman package manager. If more than one compiler/tool or package-manager plan is available, Nox asks which one to use. Before running a native package-manager command, Nox displays the package, full command, and install prefix and asks `Proceed with installation? [Y/n]`. Enter or `y` confirms; `n` cancels. System package managers may require administrator privileges and install dependencies in addition to the selected package. Homebrew auto-update is disabled for the install command.
+
+Installing Rust's compiler (`rustc`), Cargo, and `rustup` are separate choices where the package manager supports them. Some package managers provide `rustc` and Cargo together as one package. Nox uses package names for the detected manager; availability depends on enabled repositories, which Nox does not add or change. Installation errors are reported rather than hidden.
 
 ## `nox install [--prefix PATH] [--release]`
 

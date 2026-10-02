@@ -282,6 +282,9 @@ pub fn run() -> Result<()> {
         return update(channel, update_version.as_deref());
     }
     if command == "riders" {
+        if !positional.is_empty() {
+            return crate::toolchain::install::run(&positional);
+        }
         let mut riders = rider::available().to_vec();
         riders.sort_by(|left, right| left.name.cmp(right.name));
         for rider in riders {

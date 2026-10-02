@@ -9,6 +9,8 @@ pub enum RiderKind {
     D,
     Go,
     Java,
+    Kotlin,
+    FSharp,
     CSharp,
     QSharp,
     Swift,
@@ -16,7 +18,9 @@ pub enum RiderKind {
     Python,
     JavaScript,
     TypeScript,
-    Kotlin,
+    Ruby,
+    Lua,
+    Php,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -44,7 +48,7 @@ pub fn available() -> &'static [Rider] {
         Rider {
             name: "Rust Rider",
             kind: RiderKind::Rust,
-            description: "Builds basic Rust executables and libraries through rustc.",
+            description: "Builds Rust executables and libraries through rustc and Cargo.",
             extensions: &["rs"],
         },
         Rider {
@@ -105,7 +109,7 @@ pub fn available() -> &'static [Rider] {
             name: "JavaScript Rider",
             kind: RiderKind::JavaScript,
             description: "Checks and packages JavaScript through Node.js.",
-            extensions: &["js", "jsx"],
+            extensions: &["js", "jsx", "mjs"],
         },
         Rider {
             name: "TypeScript Rider",
@@ -119,6 +123,30 @@ pub fn available() -> &'static [Rider] {
             description: "Builds Kotlin archives through kotlinc.",
             extensions: &["kt", "kts"],
         },
+        Rider {
+            name: "Ruby Rider",
+            kind: RiderKind::Ruby,
+            description: "Runs Ruby scripts through Ruby.",
+            extensions: &["rb"],
+        },
+        Rider {
+            name: "F# Rider",
+            kind: RiderKind::FSharp,
+            description: "Runs F# scripts through .NET F# Interactive.",
+            extensions: &["fsx"],
+        },
+        Rider {
+            name: "Lua Rider",
+            kind: RiderKind::Lua,
+            description: "Runs Lua scripts through the Lua interpreter.",
+            extensions: &["lua"],
+        },
+        Rider {
+            name: "PHP Rider",
+            kind: RiderKind::Php,
+            description: "Runs PHP scripts through the PHP runtime.",
+            extensions: &["php"],
+        },
     ]
 }
 
@@ -131,7 +159,7 @@ pub fn for_source(source: &Path) -> Option<&'static Rider> {
 
 #[cfg(test)]
 mod tests {
-    use super::{RiderKind, for_source};
+    use super::{RiderKind, available, for_source};
     use std::path::Path;
 
     #[test]
@@ -152,5 +180,37 @@ mod tests {
             for_source(Path::new("main.qs")).unwrap().kind,
             RiderKind::QSharp
         );
+    }
+
+    #[test]
+    fn resolves_ruby_and_fsharp_sources() {
+        assert_eq!(
+            for_source(Path::new("script.rb")).unwrap().kind,
+            RiderKind::Ruby
+        );
+        assert_eq!(
+            for_source(Path::new("script.fsx")).unwrap().kind,
+            RiderKind::FSharp
+        );
+    }
+
+    #[test]
+    fn resolves_lua_and_php_sources() {
+        assert_eq!(
+            for_source(Path::new("script.lua")).unwrap().kind,
+            RiderKind::Lua
+        );
+        assert_eq!(
+            for_source(Path::new("script.php")).unwrap().kind,
+            RiderKind::Php
+        );
+    }
+
+    #[test]
+    fn rider_names_are_unique() {
+        let mut names: Vec<_> = available().iter().map(|rider| rider.name).collect();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), available().len());
     }
 }

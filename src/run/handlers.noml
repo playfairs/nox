@@ -31,6 +31,22 @@ ruleset "handlers" {
         tools: ["ruby"]
         arguments: []
     },
+    handler: Lua {
+        language: "Lua"
+        dependency: "Lua"
+        mode: runtime
+        extensions: ["lua"]
+        tools: ["lua", "lua5.4", "lua5.3"]
+        arguments: []
+    },
+    handler: PHP {
+        language: "PHP"
+        dependency: "PHP"
+        mode: runtime
+        extensions: ["php"]
+        tools: ["php"]
+        arguments: []
+    },
     handler: C {
         language: "C"
         dependency: "a C compiler (cc, clang, or gcc)"
