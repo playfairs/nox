@@ -9,6 +9,8 @@ fn resolves_supported_file_handlers() {
         ("Test.cpp", "C++"),
         ("Test.d", "D"),
         ("Test.rb", "Ruby"),
+        ("Test.lua", "Lua"),
+        ("Test.php", "PHP"),
         ("Test.py", "Python"),
         ("Test.js", "JavaScript"),
         ("Test.hs", "Haskell"),

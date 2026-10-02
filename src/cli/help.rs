@@ -13,7 +13,7 @@ pub fn print(command: &str) {
   uninstall             Remove installed targets
   validate              Check nox.build and dependencies
   status, stat          Show configuration and toolchains
-  riders                List supported language backends
+  riders                List or install language toolchains
   packages, pkgs        Inspect the public Nox package registry
   targets, list         List declared targets
   graph                 Show dependency order
@@ -56,7 +56,7 @@ Options:\n  -h, --help              Show command help\n  -v, --version          
             "Usage: nox status [-C BUILD_DIR]\n\nShow whether the selected build directory is configured. Display project metadata, configuration, detected tools, compile flags, and target count.\n\nAliases: nox stat."
         }
         "riders" => {
-            "Usage: nox riders\n\nList the language and toolchain Riders compiled into Nox. Riders map source extensions to compiler or interpreter backends."
+            "Usage: nox riders [install <language>]\n\nList the language and toolchain Riders compiled into Nox, or install a supported toolchain. If Nix is installed or Nox is Nix-managed, Nox recommends a Nix profile command and does not run another package manager. Otherwise, Nox uses a detected native package manager. When multiple toolchain choices are available, Nox asks you to choose. Before a native package-manager install, it displays the package, exact command, and install location, then asks for confirmation.\n\nExamples:\n  nox riders\n  nox riders install rust\n  nox riders install ruby"
         }
         "packages" | "pkgs" => {
             "Usage: nox packages [list|search QUERY|NAME]\n\nList installed packages or show information about an installed package. Search the public registry with 'nox packages search QUERY'.\n\nExamples:\n  nox packages list\n  nox packages ripnet\n  nox packages search ripnet"

@@ -427,6 +427,21 @@ fn build_external_target(
         | crate::toolchain::rider::RiderKind::Rust => {
             unreachable!()
         }
+        crate::toolchain::rider::RiderKind::Ruby
+        | crate::toolchain::rider::RiderKind::FSharp
+        | crate::toolchain::rider::RiderKind::Lua
+        | crate::toolchain::rider::RiderKind::Php => {
+            return Err(Error::Config(format!(
+                "{} scripts can be run directly, but are not supported as build targets yet",
+                match kind {
+                    crate::toolchain::rider::RiderKind::Ruby => "Ruby",
+                    crate::toolchain::rider::RiderKind::FSharp => "F#",
+                    crate::toolchain::rider::RiderKind::Lua => "Lua",
+                    crate::toolchain::rider::RiderKind::Php => "PHP",
+                    _ => unreachable!(),
+                }
+            )));
+        }
     }
     crate::core::output::action("built", output.display());
     Ok(())
