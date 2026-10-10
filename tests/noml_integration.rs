@@ -1,4 +1,4 @@
-use noml::{Value, parse, serialize};
+use noml::{parse, serialize, Value};
 
 #[test]
 fn parses_basic_noml_values_and_rulesets() {
@@ -65,18 +65,14 @@ fn loads_the_nox_command_rules_noml_file() {
         Value::Ruleset(ruleset) => {
             assert_eq!(ruleset.name, "commands");
             assert!(!ruleset.entries.is_empty());
-            assert!(
-                ruleset
-                    .entries
-                    .iter()
-                    .any(|entry| entry.type_name == "command" && entry.name == "help")
-            );
-            assert!(
-                ruleset
-                    .entries
-                    .iter()
-                    .any(|entry| entry.type_name == "command" && entry.name == "task")
-            );
+            assert!(ruleset
+                .entries
+                .iter()
+                .any(|entry| entry.type_name == "command" && entry.name == "help"));
+            assert!(ruleset
+                .entries
+                .iter()
+                .any(|entry| entry.type_name == "command" && entry.name == "task"));
             assert!(!ruleset
                 .entries
                 .iter()
@@ -88,26 +84,22 @@ fn loads_the_nox_command_rules_noml_file() {
 
 #[test]
 fn loads_the_run_handler_registry_noml_file() {
-    let parsed = parse(include_str!("../src/run/handlers.noml"))
-        .expect("run handler registry should parse");
+    let parsed =
+        parse(include_str!("../src/run/handlers.noml")).expect("run handler registry should parse");
     match parsed {
         Value::Ruleset(ruleset) => {
             assert_eq!(ruleset.name, "handlers");
             assert!(!ruleset.entries.is_empty());
-            assert!(
-                ruleset
-                    .entries
-                    .iter()
-                    .any(|entry| entry.type_name == "handler" && entry.name == "Python")
-            );
-            assert!(
-                ruleset.entries.iter().any(|entry| {
-                    entry.type_name == "handler"
-                        && entry.properties.get("language").is_some_and(|value| {
-                            matches!(value, Value::String(text) if text == "Python")
-                        })
-                })
-            );
+            assert!(ruleset
+                .entries
+                .iter()
+                .any(|entry| entry.type_name == "handler" && entry.name == "Python"));
+            assert!(ruleset.entries.iter().any(|entry| {
+                entry.type_name == "handler"
+                    && entry.properties.get("language").is_some_and(
+                        |value| matches!(value, Value::String(text) if text == "Python"),
+                    )
+            }));
         }
         _ => panic!("expected ruleset root"),
     }

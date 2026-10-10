@@ -22,7 +22,7 @@ mod help;
 const REPOSITORY_URL: &str = "https://github.com/playfairs/nox.git";
 
 fn version() -> &'static str {
-    include_str!("../../VERSION").trim()
+    include_str!("../../../VERSION").trim()
 }
 
 fn version_display() -> String {
@@ -1604,10 +1604,12 @@ mod tests {
         uninstall_installed_package_from("demo", &database_path).unwrap();
 
         assert!(!destination.exists());
-        assert!(InstalledPackageDatabase::load_from(&database_path)
-            .unwrap()
-            .packages
-            .is_empty());
+        assert!(
+            InstalledPackageDatabase::load_from(&database_path)
+                .unwrap()
+                .packages
+                .is_empty()
+        );
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -1707,10 +1709,12 @@ mod tests {
 
         uninstall_installed_package_from("fixture", &database_path).unwrap();
         assert!(!destination.exists());
-        assert!(InstalledPackageDatabase::load_from(&database_path)
-            .unwrap()
-            .packages
-            .is_empty());
+        assert!(
+            InstalledPackageDatabase::load_from(&database_path)
+                .unwrap()
+                .packages
+                .is_empty()
+        );
         fs::remove_dir_all(root).unwrap();
     }
 

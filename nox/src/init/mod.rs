@@ -139,11 +139,7 @@ mod tests {
         let root = temporary_root("unlicense");
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
-        fs::write(
-            root.join("UNLICENSE"),
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/UNLICENSE")),
-        )
-        .unwrap();
+        fs::write(root.join("UNLICENSE"), include_str!("../../../UNLICENSE")).unwrap();
 
         let analysis = crate::project::analyzer::analyze(&root).unwrap();
         assert!(analysis.has_license);

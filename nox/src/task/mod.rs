@@ -30,12 +30,12 @@ pub fn run_task(path: &Path, name: &str, build_dir: &Path) -> Result<()> {
         TaskContext {
             version: project
                 .version
-                .unwrap_or_else(|| include_str!("../../VERSION").trim().to_string()),
+                .unwrap_or_else(|| include_str!("../../../VERSION").trim().to_string()),
             settings: project.settings,
         }
     } else {
         TaskContext {
-            version: include_str!("../../VERSION").trim().to_string(),
+            version: include_str!("../../../VERSION").trim().to_string(),
             settings: HashMap::new(),
         }
     };

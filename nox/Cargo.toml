@@ -1,0 +1,13 @@
+[package]
+name = "nox"
+version = "1.3.6"
+edition = "2024"
+description = "The Nox Build & Automation System"
+license = "Unlicense"
+
+[dependencies]
+serde_json.workspace = true
+askalono.workspace = true
+license.workspace = true
+serde.workspace = true
+noml.workspace = true
