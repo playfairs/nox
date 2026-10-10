@@ -27,12 +27,12 @@ jobs:
         uses: cachix/install-nix-action@v31
       - name: Run Rust tests
         run: cargo test --all-targets
-      - name: Run Nix checks
+      - name: Run Nix check
         run: nix flake check
 
   linux-build:
     name: Linux x86_64
-    needs: checks
+    needs: tests
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -63,7 +63,7 @@ jobs:
 
   macos-build:
     name: macOS arm64
-    needs: checks
+    needs: tests
     runs-on: macos-14
     steps:
       - name: Checkoute
