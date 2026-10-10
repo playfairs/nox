@@ -23,6 +23,12 @@ jobs:
           merge-multiple: true
           path: release
 
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: velopack-${{ github.sha }}-*
+          merge-multiple: true
+          path: velopack
+
       - uses: softprops/action-gh-release@v3
         with:
           name: Nox ${{ github.ref_name }}
@@ -31,3 +37,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             release/**/nox-*
+            velopack/**

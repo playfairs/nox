@@ -1,6 +1,8 @@
 use nox::core::{error::Error, output};
 
 fn main() {
+    velopack::VelopackApp::build().run();
+
     match nox::cli::run() {
         Ok(()) => {}
         Err(Error::Exit(code)) => std::process::exit(code),

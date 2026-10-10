@@ -15,11 +15,12 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use velopack::{UpdateCheck, UpdateInfo, UpdateManager, UpdateOptions, sources::GithubSource};
 
 mod commands;
 mod help;
 
-const REPOSITORY_URL: &str = "https://github.com/playfairs/nox.git";
+const UPDATE_REPOSITORY_URL: &str = "https://github.com/playfairs/nox";
 
 fn version() -> &'static str {
     include_str!("../../VERSION").trim()
@@ -50,11 +51,25 @@ impl UpdateChannel {
         }
     }
 
-    fn branch(self) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
-            Self::Stable => "master",
+            Self::Stable => "stable",
             Self::Dev => "dev",
         }
+    }
+
+    fn velopack_name(self) -> String {
+        let os = match std::env::consts::OS {
+            "macos" => "osx",
+            "windows" => "win",
+            other => other,
+        };
+        let arch = match std::env::consts::ARCH {
+            "x86_64" => "x64",
+            "aarch64" => "arm64",
+            other => other,
+        };
+        format!("{os}-{arch}-{}", self.name())
     }
 }
 
@@ -669,124 +684,133 @@ fn update(channel: Option<UpdateChannel>, requested_version: Option<&str>) -> Re
         return Ok(());
     }
 
-    let requested = requested_version.map(parse_semver).transpose()?;
-    let (target_version, install_args, channel) = match (channel, requested) {
-        (Some(channel), None) => {
-            let latest = fetch_version(channel.branch())?;
-            (
-                latest,
-                vec!["--branch".to_string(), channel.branch().to_string()],
-                Some(channel),
-            )
-        }
-        (None, Some(version)) => (
-            version.clone(),
-            vec!["--tag".to_string(), format!("v{version}")],
-            None,
-        ),
-        (None, None) => {
-            let channel = UpdateChannel::Stable;
-            let latest = fetch_version(channel.branch())?;
-            (
-                latest,
-                vec!["--branch".to_string(), channel.branch().to_string()],
-                Some(channel),
-            )
-        }
-        (Some(_), Some(_)) => unreachable!("update channel and version are mutually exclusive"),
+    let channel = channel.unwrap_or(UpdateChannel::Stable);
+    let requested = requested_version
+        .map(|value| {
+            semver::Version::parse(value.trim().trim_start_matches('v')).map_err(|_| {
+                Error::Config(format!("version '{value}' is not valid semantic version"))
+            })
+        })
+        .transpose()?;
+    let options = UpdateOptions {
+        AllowVersionDowngrade: false,
+        ExplicitChannel: Some(channel.velopack_name()),
+        ..Default::default()
     };
+    let source = GithubSource::new(UPDATE_REPOSITORY_URL, None, channel == UpdateChannel::Dev);
+    let manager = UpdateManager::new(source, Some(options), None).map_err(|error| match error {
+        velopack::Error::NotInstalled(_) => Error::Config(
+            "Nox was not installed through Velopack, so it cannot update itself.\n\
+             Download the latest release from https://github.com/playfairs/nox/releases \
+             or rebuild with:\n\n    cargo install --git https://github.com/playfairs/nox.git nox --locked"
+                .to_string(),
+        ),
+        error => Error::Process(format!("could not initialize the Nox updater: {error}")),
+    })?;
 
-    let current = parse_semver(version())?;
-    if requested_version.is_some() {
-        if target_version == current {
-            println!("Nox {target_version} is already installed.");
-            return Ok(());
-        }
-        if target_version < current {
-            println!(
-                "Requested version ({target_version}) is older than the installed version ({}).\nNox will not downgrade automatically.",
-                version()
-            );
-            return Ok(());
-        }
-    } else if target_version == current {
-        match channel {
-            Some(UpdateChannel::Dev) => println!(
-                "Nox is already up to date with the development channel ({target_version})."
-            ),
-            _ => println!("Nox is already up to date ({target_version})."),
-        }
-        return Ok(());
-    } else if target_version < current {
-        match channel {
-            Some(UpdateChannel::Dev) => println!(
-                "Installed Nox version ({}) is newer than the latest development version ({target_version}).\nNox will not downgrade automatically.",
-                version()
-            ),
-            _ => println!(
-                "Installed Nox version ({}) is newer than the latest stable version ({target_version}).\nNox will not downgrade automatically.",
-                version()
-            ),
-        }
-        return Ok(());
-    }
+    let update_info = match requested {
+        Some(requested) => match exact_version_update(&manager, channel, requested)? {
+            Some(update_info) => update_info,
+            None => return Ok(()),
+        },
+        None => match manager.check_for_updates() {
+            Ok(UpdateCheck::UpdateAvailable(update_info)) => *update_info,
+            Ok(UpdateCheck::NoUpdateAvailable | UpdateCheck::RemoteIsEmpty) => {
+                let current = manager.get_current_version();
+                match channel {
+                    UpdateChannel::Dev => println!(
+                        "Nox is already up to date with the development channel ({current})."
+                    ),
+                    UpdateChannel::Stable => {
+                        println!("Nox is already up to date ({current}).")
+                    }
+                }
+                return Ok(());
+            }
+            Err(error) => {
+                return Err(Error::Process(format!(
+                    "could not check for Nox updates: {error}"
+                )));
+            }
+        },
+    };
 
     println!(
-        "A newer {} version of Nox is available: {target_version}.\nUpdating...",
+        "A newer {} version of Nox is available: {}.\nDownloading...",
         match channel {
-            Some(UpdateChannel::Dev) => "development",
-            _ => "stable",
-        }
+            UpdateChannel::Dev => "development",
+            UpdateChannel::Stable => "stable",
+        },
+        update_info.TargetFullRelease.Version
     );
-    let executable = invoked_executable()?;
-    let install_root = executable
-        .parent()
-        .and_then(Path::parent)
-        .ok_or_else(|| Error::Config("could not determine Nox installation root".to_string()))?;
-    let mut args = vec![
-        "install".to_string(),
-        "--git".to_string(),
-        REPOSITORY_URL.to_string(),
-        "nox".to_string(),
-        "--root".to_string(),
-        install_root.to_string_lossy().into_owned(),
-    ];
-    args.extend(install_args);
-    args.extend(["--locked".to_string(), "--force".to_string()]);
-    let channel_name = match channel {
-        Some(UpdateChannel::Stable) => "stable",
-        Some(UpdateChannel::Dev) => "dev",
-        None => "unknown",
-    };
-    let mut command = if install_requires_privilege(install_root) {
-        output::warning(format!(
-            "updating Nox in {} requires elevated permissions; requesting sudo",
-            install_root.display()
-        ));
-        let mut command = Command::new("sudo");
-        command.args([
-            "env",
-            &format!("NOX_INSTALL_CHANNEL={channel_name}"),
-            "cargo",
-        ]);
-        command
-    } else {
-        let mut command = Command::new("cargo");
-        command.env("NOX_INSTALL_CHANNEL", channel_name);
-        command
-    };
-    command.args(&args);
-    let status = command
-        .status()
-        .map_err(|error| Error::Process(format!("could not start cargo install: {error}")))?;
-    if status.success() {
-        output::action("updated nox", target_version);
-        Ok(())
-    } else {
-        Err(Error::Process(format!(
-            "cargo install exited with {status}"
-        )))
+    download_update(&manager, &update_info)?;
+    println!(
+        "Installing Nox {}...",
+        update_info.TargetFullRelease.Version
+    );
+    manager
+        .wait_exit_then_apply_updates(&update_info, false, false, Vec::<String>::new())
+        .map_err(|error| Error::Process(format!("could not apply the Nox update: {error}")))?;
+    output::action("updated nox", update_info.TargetFullRelease.Version);
+    Ok(())
+}
+
+fn exact_version_update(
+    manager: &UpdateManager,
+    channel: UpdateChannel,
+    requested: semver::Version,
+) -> Result<Option<UpdateInfo>> {
+    let current = manager.get_current_version();
+    if requested == current {
+        println!("Nox {requested} is already installed.");
+        return Ok(None);
     }
+    if requested < current {
+        println!(
+            "Requested version ({requested}) is older than the installed version ({current}).\nNox will not downgrade automatically."
+        );
+        return Ok(None);
+    }
+    let feed = manager.get_release_feed().map_err(|error| {
+        Error::Process(format!("could not list available Nox releases: {error}"))
+    })?;
+    let target = feed
+        .Assets
+        .iter()
+        .filter(|asset| asset.Type.eq_ignore_ascii_case("Full"))
+        .find(|asset| {
+            semver::Version::parse(&asset.Version).is_ok_and(|version| version == requested)
+        })
+        .cloned()
+        .ok_or_else(|| {
+            Error::Config(format!(
+                "Nox {requested} is not available on the {} channel",
+                channel.velopack_name()
+            ))
+        })?;
+    Ok(Some(UpdateInfo {
+        TargetFullRelease: target,
+        BaseRelease: None,
+        DeltasToTarget: Vec::new(),
+        IsDowngrade: false,
+    }))
+}
+
+fn download_update(manager: &UpdateManager, update_info: &UpdateInfo) -> Result<()> {
+    let (sender, receiver) = std::sync::mpsc::channel::<i16>();
+    let progress = std::thread::spawn(move || {
+        let mut last = -1;
+        while let Ok(progress) = receiver.recv() {
+            if progress != last {
+                print!("\r  downloading... {progress}%");
+                last = progress;
+            }
+        }
+    });
+    let result = manager.download_updates(update_info, Some(sender));
+    let _ = progress.join();
+    println!();
+    result.map_err(|error| Error::Process(format!("could not download the Nox update: {error}")))
 }
 
 fn install_requires_privilege(root: &Path) -> bool {
@@ -819,51 +843,6 @@ fn sudo_command(program: &str) -> Command {
     let mut command = Command::new("sudo");
     command.arg(program);
     command
-}
-
-fn fetch_version(branch: &str) -> Result<SemVersion> {
-    let reference = format!("refs/heads/{branch}");
-    let commit = Command::new("git")
-        .args(["ls-remote", "--exit-code", REPOSITORY_URL, &reference])
-        .output()
-        .map_err(|error| {
-            Error::Process(format!("could not query the latest Nox commit: {error}"))
-        })?;
-    if !commit.status.success() {
-        return Err(Error::Process(format!(
-            "could not query the latest Nox commit for channel '{branch}' (git exited with {})",
-            commit.status
-        )));
-    }
-    let commit = String::from_utf8(commit.stdout)
-        .map_err(|error| Error::Process(format!("latest Nox commit was not valid UTF-8: {error}")))?
-        .split_whitespace()
-        .next()
-        .ok_or_else(|| Error::Process("latest Nox commit response was empty".to_string()))?
-        .to_string();
-    let cache_buster = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let url = format!(
-        "https://raw.githubusercontent.com/playfairs/nox/{commit}/VERSION?cachebust={cache_buster}"
-    );
-    let response = Command::new("curl")
-        .args(["--fail", "--silent", "--show-error", &url])
-        .output()
-        .map_err(|error| {
-            Error::Process(format!("could not query the latest Nox version: {error}"))
-        })?;
-    if !response.status.success() {
-        return Err(Error::Process(format!(
-            "could not query the latest Nox version (curl exited with {})",
-            response.status
-        )));
-    }
-    let latest = String::from_utf8(response.stdout).map_err(|error| {
-        Error::Process(format!("latest Nox version was not valid UTF-8: {error}"))
-    })?;
-    parse_semver(latest.trim())
 }
 
 fn is_nix_managed() -> Result<bool> {
@@ -920,88 +899,6 @@ fn where_nox_paths() -> Vec<PathBuf> {
         }
     }
     paths
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct SemVersion {
-    major: u64,
-    minor: u64,
-    patch: u64,
-    prerelease: Vec<String>,
-}
-
-impl std::fmt::Display for SemVersion {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{}.{}.{}", self.major, self.minor, self.patch)?;
-        if !self.prerelease.is_empty() {
-            write!(formatter, "-{}", self.prerelease.join("."))?;
-        }
-        Ok(())
-    }
-}
-
-impl Ord for SemVersion {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.major, self.minor, self.patch)
-            .cmp(&(other.major, other.minor, other.patch))
-            .then_with(
-                || match (self.prerelease.is_empty(), other.prerelease.is_empty()) {
-                    (true, true) => std::cmp::Ordering::Equal,
-                    (true, false) => std::cmp::Ordering::Greater,
-                    (false, true) => std::cmp::Ordering::Less,
-                    (false, false) => compare_prerelease(&self.prerelease, &other.prerelease),
-                },
-            )
-    }
-}
-
-impl PartialOrd for SemVersion {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-fn compare_prerelease(left: &[String], right: &[String]) -> std::cmp::Ordering {
-    for (left, right) in left.iter().zip(right) {
-        let ordering = match (left.parse::<u64>(), right.parse::<u64>()) {
-            (Ok(left), Ok(right)) => left.cmp(&right),
-            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
-            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
-            (Err(_), Err(_)) => left.cmp(right),
-        };
-        if ordering != std::cmp::Ordering::Equal {
-            return ordering;
-        }
-    }
-    left.len().cmp(&right.len())
-}
-
-fn parse_semver(value: &str) -> Result<SemVersion> {
-    let value = value.strip_prefix('v').unwrap_or(value);
-    let value = value.split_once('+').map_or(value, |(value, _)| value);
-    let (core, prerelease) = value.split_once('-').map_or((value, ""), |parts| parts);
-    let parts: Vec<_> = core.split('.').collect();
-    if parts.len() != 3 || parts.iter().any(|part| part.is_empty()) {
-        return Err(Error::Config(format!(
-            "version '{value}' is not valid semantic version"
-        )));
-    }
-    let numbers = parts
-        .iter()
-        .map(|part| part.parse::<u64>())
-        .collect::<std::result::Result<Vec<_>, _>>()
-        .map_err(|_| Error::Config(format!("version '{value}' is not valid semantic version")))?;
-    let prerelease = if prerelease.is_empty() {
-        Vec::new()
-    } else {
-        prerelease.split('.').map(str::to_string).collect()
-    };
-    Ok(SemVersion {
-        major: numbers[0],
-        minor: numbers[1],
-        patch: numbers[2],
-        prerelease,
-    })
 }
 
 fn version_files(root: &Path) -> Result<Option<Vec<PathBuf>>> {
@@ -1544,9 +1441,9 @@ fn default_install_prefix() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        bump_version, install_project_with_origin_to_database, installed_package_record,
-        is_nix_managed_path, package_reference, parse_semver, run_with_project, standalone_file,
-        uninstall_installed_package_from, version_files,
+        UpdateChannel, bump_version, install_project_with_origin_to_database,
+        installed_package_record, is_nix_managed_path, package_reference, run_with_project,
+        standalone_file, uninstall_installed_package_from, version_files,
     };
     use crate::pkgs::database::{
         InstallMethod, InstallOrigin, InstalledPackage, InstalledPackageDatabase,
@@ -1604,10 +1501,12 @@ mod tests {
         uninstall_installed_package_from("demo", &database_path).unwrap();
 
         assert!(!destination.exists());
-        assert!(InstalledPackageDatabase::load_from(&database_path)
-            .unwrap()
-            .packages
-            .is_empty());
+        assert!(
+            InstalledPackageDatabase::load_from(&database_path)
+                .unwrap()
+                .packages
+                .is_empty()
+        );
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -1707,10 +1606,12 @@ mod tests {
 
         uninstall_installed_package_from("fixture", &database_path).unwrap();
         assert!(!destination.exists());
-        assert!(InstalledPackageDatabase::load_from(&database_path)
-            .unwrap()
-            .packages
-            .is_empty());
+        assert!(
+            InstalledPackageDatabase::load_from(&database_path)
+                .unwrap()
+                .packages
+                .is_empty()
+        );
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -1816,10 +1717,15 @@ mod tests {
     }
 
     #[test]
-    fn compares_semantic_versions_and_prereleases() {
-        assert!(parse_semver("1.2.10").unwrap() > parse_semver("1.2.9").unwrap());
-        assert!(parse_semver("1.2.5").unwrap() > parse_semver("1.2.5-dev").unwrap());
-        assert!(parse_semver("1.2.5-10").unwrap() > parse_semver("1.2.5-2").unwrap());
+    fn parses_update_channels_and_names() {
+        assert_eq!(
+            UpdateChannel::parse("stable").unwrap(),
+            UpdateChannel::Stable
+        );
+        assert_eq!(UpdateChannel::parse("dev").unwrap(), UpdateChannel::Dev);
+        assert!(UpdateChannel::parse("beta").is_err());
+        assert_eq!(UpdateChannel::Stable.name(), "stable");
+        assert_eq!(UpdateChannel::Dev.name(), "dev");
     }
 
     #[test]

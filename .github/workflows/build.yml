@@ -72,3 +72,85 @@ jobs:
           name: nox-${{ github.sha }}-aarch64-macos
           path: dist/nox-aarch64-macos
           if-no-files-found: error
+
+  linux-velopack:
+    name: Linux Velopack package
+    needs: tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use nightly Rust
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup default nightly
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Pack Velopack release
+        run: |
+          cargo b -r
+
+          mkdir -p dist
+          cp target/release/nox dist/nox
+
+          dotnet tool install -g vpk
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          if [[ "$GITHUB_REF" == refs/heads/dev || "$GITHUB_REF" == refs/tags/*-* ]]; then
+            CHANNEL=dev
+          else
+            CHANNEL=stable
+          fi
+
+          vpk pack --packId nox --packVersion "$(cat VERSION)" --packDir dist --mainExe nox \
+            --runtime linux-x64 --icon assets/icon.png \
+            --channel "linux-x64-${CHANNEL}" --outputDir Releases
+      - name: Upload Velopack package
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-${{ github.sha }}-linux
+          path: Releases
+          if-no-files-found: error
+
+  macos-velopack:
+    name: macOS Velopack package
+    needs: tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use nightly Rust
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup default nightly
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Pack Velopack release
+        run: |
+          cargo b -r
+
+          mkdir -p dist
+          cp target/release/nox dist/nox
+
+          dotnet tool install -g vpk
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          if [[ "$GITHUB_REF" == refs/heads/dev || "$GITHUB_REF" == refs/tags/*-* ]]; then
+            CHANNEL=dev
+          else
+            CHANNEL=stable
+          fi
+
+          vpk pack --packId nox --packVersion "$(cat VERSION)" --packDir dist --mainExe nox \
+            --runtime osx-arm64 --icon assets/nox-macOS.icns \
+            --channel "osx-arm64-${CHANNEL}" --outputDir Releases
+      - name: Upload Velopack package
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-${{ github.sha }}-macos
+          path: Releases
+          if-no-files-found: error
