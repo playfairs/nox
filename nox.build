@@ -16,7 +16,7 @@ project "nox" {
     }
 
     executable.rust "nox" {
-        sources = ["src/main.rs"]
+        sources = ["nox/src/main.rs"]
         flags = []
         install = true
     }
