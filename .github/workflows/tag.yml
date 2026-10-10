@@ -13,12 +13,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  checks:
-    name: Run checks
+  tests:
+    name: Run tests
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out source
+      - name: Checkout
         uses: actions/checkout@v4
+      - name: Use nightly Rust
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup default nightly
       - name: Install Nix
         uses: cachix/install-nix-action@v31
       - name: Run Rust tests
@@ -31,8 +35,12 @@ jobs:
     needs: checks
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out source
+      - name: Checkout
         uses: actions/checkout@v4
+      - name: Use nightly Rust
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup default nightly
       - name: Install Nix
         uses: cachix/install-nix-action@v31
       - name: Build package
@@ -58,8 +66,12 @@ jobs:
     needs: checks
     runs-on: macos-14
     steps:
-      - name: Check out source
+      - name: Checkoute
         uses: actions/checkout@v4
+      - name: Use nightly Rust
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup default nightly
       - name: Install Nix
         uses: cachix/install-nix-action@v31
       - name: Build package
@@ -92,7 +104,11 @@ jobs:
       group: nox-dev-tags
       cancel-in-progress: false
     steps:
-      - name: Check out source
+      - name: Checkout
+      - name: Use nightly Rust
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup default nightly
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
