@@ -73,3 +73,21 @@ scalar, boolean, and list type checks are also implemented.
 	  without a documented trust and confirmation model.
 	* Add commands for dependency inspection, lockfile generation/update, cache
 	  management, and verification, plus integration tests using a local test registry.
+
+* Bootstrap toolchains and verify the local dependency store
+	* When a project does not select a specific toolchain ("rider"), detect the
+	  project type and install or provision its required default tools; for example,
+	  make ``rustup`` and ``cargo`` available for a Rust project.
+	* Keep toolchains and downloaded dependencies in a managed per-user store such
+	  as ``~/.nox``, with documented layout, version selection, cache reuse, cleanup,
+	  and offline behavior.
+
+* Checksum system
+	* Record checksums for stored files in a deterministic manifest, recursively
+	  covering directories while excluding the checksum manifest itself. Verify the
+	  manifest before using cached content and report the affected path and expected
+	  versus actual checksum when content does not match.
+	* Define recovery behavior for corrupted store entries (for example, quarantine
+	  or redownload them when safe) rather than silently using them or crashing with
+	  an unhandled panic. Document that checksums detect accidental changes but do
+	  not establish authenticity unless the expected checksums are trusted.
