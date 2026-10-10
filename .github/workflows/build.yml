@@ -43,7 +43,11 @@ jobs:
           rustup toolchain install nightly --profile minimal
           rustup default nightly
       - name: Build release package
-        run: cargo b -r --timings
+        run: |
+          cargo b -r --timings
+
+          mkdir -p dist
+          cp target/release/nox dist/nox-x86_64-linux
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
@@ -63,10 +67,14 @@ jobs:
           rustup toolchain install nightly --profile minimal
           rustup default nightly
       - name: Build release package
-        run: cargo b -r --timings
+        run: |
+          cargo b -r --timings
+
+          mkdir -p dist
+          cp target/release/nox dist/nox-aarch64-macos
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
           name: nox-${{ github.sha }}-aarch64-macos
-          path: target/release/nox
+          path: dist/nox-aarch64-macos
           if-no-files-found: error
