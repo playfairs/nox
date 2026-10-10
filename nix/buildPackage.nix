@@ -1,12 +1,22 @@
 {
-  pkgs ? import <nixpkgs> { },
+  stdenv,
+  pkgs,
 }:
-pkgs.rustPlatform.buildRustPackage {
-  pname = "nox";
-  version = pkgs.lib.strings.trim (builtins.readFile ../VERSION);
+{
+  fenix,
+  crane,
+  ...
+}:
+let
+  toolchain =
+    with fenix.packages.${stdenv.hostPlatform.system};
+    combine [
+      latest.toolchain
+    ];
+  craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
   src = ../.;
-  cargoLock = {
-    lockFile = ../Cargo.lock;
-  };
-  meta.mainProgram = "nox";
-}
+in
+craneLib.buildPackage {
+  inherit src;
+  strictDeps = true;
+} 

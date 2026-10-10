@@ -1,61 +1,61 @@
 {
-  description = "The Nox Build & Automation System";
+  description = "Flake for Nox";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-  inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
+  inputs = {
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    crane.url = "github:ipetkov/crane";
+    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs/26.05";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    self.submodules = true;
+  };
 
   outputs =
     {
-      self,
+      flake-utils,
       nixpkgs,
-      treefmt-nix,
-    }:
-    let
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
-      forAllSystems =
-        function: nixpkgs.lib.genAttrs systems (system: function nixpkgs.legacyPackages.${system});
-    in
-    {
-      packages = forAllSystems (pkgs: {
-        nox = pkgs.callPackage ./nix/buildPackage.nix { };
-        default = pkgs.callPackage ./nix/buildPackage.nix { };
-      });
+      self,
+      ...
+    }@inputs:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+        };
 
-      apps = forAllSystems (pkgs: {
-        default = {
+        nox = (pkgs.callPackage ./nix/buildPackage.nix { }) inputs;
+      in
+      {
+        devShells =
+          let
+            inherit (pkgs.callPackage ./nix/devshell-tools.nix { })
+              mkComposedShell
+              ;
+
+            extraFrag = (pkgs.callPackage ./nix/extra.nix { }) self;
+            rustFrag = (pkgs.callPackage ./nix/rustDevShell.nix { }) inputs;
+          in
+          mkComposedShell [ rustFrag ] { }
+          // mkComposedShell [
+            rustFrag
+            extraFrag
+          ] { nameOverride = "default"; };
+
+        packages = {
+          inherit nox;
+          default = nox;
+        };
+
+        apps.default = {
           type = "app";
-          program = "${self.packages.${pkgs.system}.default}/bin/nox";
+          program = "${self.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/nox";
         };
-      });
 
-      formatter = forAllSystems (
-        pkgs:
-        import ./nix/formatter.nix {
-          inherit pkgs;
-          inputs = { inherit treefmt-nix; };
-        }
-      );
-
-      devShells = forAllSystems (pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            self.packages.${pkgs.system}.nox
-            pkgs.rustc
-            pkgs.cargo
-            pkgs.rustfmt
-            pkgs.clang
-            pkgs.nixfmt
-          ];
-        };
-      });
-
-      checks = forAllSystems (pkgs: {
-        package = self.packages.${pkgs.system}.default;
-      });
-    };
+        formatter = (pkgs.callPackage ./nix/formatter.nix { }) inputs;
+      }
+    );
 }
