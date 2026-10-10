@@ -12,9 +12,13 @@ codegen-units = 1
 strip = true
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9"
-noml = { path = "./noml" }
 askalono = "0.5"
 license = "3.8"
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.noml]
+path = "./noml"
