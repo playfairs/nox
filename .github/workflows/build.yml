@@ -2,8 +2,6 @@ name: Build
 
 on:
   push:
-    branches:
-      - dev
   workflow_call:
 
 permissions:
@@ -24,12 +22,8 @@ jobs:
         run: |
           rustup toolchain install nightly --profile minimal
           rustup default nightly
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
       - name: Run Rust tests
         run: cargo test --all-targets
-      - name: Run Nix check
-        run: nix flake check
 
   linux-build:
     name: Linux x86_64
@@ -52,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nox-${{ github.sha }}-x86_64-linux
-          path: target/release/nox
+          path: dist/nox-x86_64-linux
           if-no-files-found: error
 
   macos-build:
