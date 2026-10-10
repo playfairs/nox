@@ -41,19 +41,12 @@ jobs:
         run: |
           rustup toolchain install nightly --profile minimal
           rustup default nightly
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
       - name: Build package
-        shell: bash
         run: |
-          set -euo pipefail
           version="$(cat VERSION)"
-          NOX_INSTALL_CHANNEL=dev nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
-          output="build-ci/release/nox/nox"
-          test -x "$output"
-          test "$("$output" --version)" = "nox $version (channel: dev)"
           mkdir -p dist
-          cp "$output" "dist/nox-v${version}-linux-x86_64"
+          cargo b -r --timings
+          cp target/release/nox "dist/nox-v${version}-linux-x86_64"
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
@@ -72,19 +65,12 @@ jobs:
         run: |
           rustup toolchain install nightly --profile minimal
           rustup default nightly
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
       - name: Build package
-        shell: bash
         run: |
-          set -euo pipefail
           version="$(cat VERSION)"
-          NOX_INSTALL_CHANNEL=dev nix develop --command bash -lc 'nox setup build-ci --release && nox compile -C build-ci -j2'
-          output="build-ci/release/nox/nox"
-          test -x "$output"
-          test "$("$output" --version)" = "nox $version (channel: dev)"
           mkdir -p dist
-          cp "$output" "dist/nox-v${version}-macos-arm64"
+          cargo b -r --timings
+          cp target/release/nox "dist/nox-v${version}-linux-x86_64"
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
