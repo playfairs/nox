@@ -1,6 +1,7 @@
 use crate::build_system::state::BuildState;
 use crate::core::error::{Error, Result};
 use crate::core::model::{Project, Target, TargetKind, TargetLanguage};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -14,12 +15,59 @@ pub fn build(project: &Project, state: &BuildState, jobs: usize) -> Result<()> {
         let target = project
             .target(&name)
             .ok_or_else(|| Error::Config(format!("missing target '{name}'")))?;
-        build_target(project, target, state, jobs)?;
+        build_one_target(project, target, state, jobs)?;
     }
     Ok(())
 }
 
-fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: usize) -> Result<()> {
+pub fn build_selected(
+    project: &Project,
+    target_name: &str,
+    state: &BuildState,
+    jobs: usize,
+) -> Result<()> {
+    for name in selected_build_order(project, target_name)? {
+        let target = project
+            .target(&name)
+            .ok_or_else(|| Error::Config(format!("missing target '{name}'")))?;
+        build_one_target(project, target, state, jobs)?;
+    }
+    Ok(())
+}
+
+fn selected_build_order(project: &Project, target_name: &str) -> Result<Vec<String>> {
+    let order = crate::core::graph::order(project)?;
+    let mut required = HashSet::new();
+    collect_dependencies(project, target_name, &mut required)?;
+    Ok(order
+        .into_iter()
+        .filter(|name| required.contains(name))
+        .collect())
+}
+
+fn collect_dependencies(
+    project: &Project,
+    name: &str,
+    required: &mut HashSet<String>,
+) -> Result<()> {
+    if !required.insert(name.to_string()) {
+        return Ok(());
+    }
+    let target = project
+        .target(name)
+        .ok_or_else(|| Error::Config(format!("missing target '{name}'")))?;
+    for dependency in &target.dependencies {
+        collect_dependencies(project, dependency, required)?;
+    }
+    Ok(())
+}
+
+fn build_one_target(
+    project: &Project,
+    target: &Target,
+    state: &BuildState,
+    jobs: usize,
+) -> Result<()> {
     let output_dir = state
         .build_dir
         .join(&state.configuration)
@@ -193,6 +241,71 @@ fn build_target(project: &Project, target: &Target, state: &BuildState, jobs: us
     }
     crate::core::output::action("built", output.display());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::selected_build_order;
+    use crate::core::model::{Project, Target, TargetKind};
+    use std::collections::HashMap;
+
+    fn target(name: &str, dependencies: &[&str]) -> Target {
+        Target {
+            name: name.to_string(),
+            kind: TargetKind::Executable { language: None },
+            sources: Vec::new(),
+            dependencies: dependencies.iter().map(|name| name.to_string()).collect(),
+            include_dirs: Vec::new(),
+            defines: Vec::new(),
+            flags: Vec::new(),
+            linker_flags: Vec::new(),
+            gradle_tasks: Vec::new(),
+            gradle_options: Vec::new(),
+            gradle_run_tasks: Vec::new(),
+            gradle_run_options: Vec::new(),
+            install: false,
+        }
+    }
+
+    fn project() -> Project {
+        Project {
+            name: "demo".to_string(),
+            version: None,
+            version_files: None,
+            description: String::new(),
+            license: String::new(),
+            edition: "1".to_string(),
+            dependencies: Vec::new(),
+            repository: None,
+            website: None,
+            authors: Vec::new(),
+            maintainers: Vec::new(),
+            targets: vec![
+                target("core", &[]),
+                target("support", &["core"]),
+                target("app", &["support"]),
+                target("worker", &[]),
+            ],
+            settings: HashMap::new(),
+            extra_env: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn includes_only_requested_target_and_dependencies() {
+        assert_eq!(
+            selected_build_order(&project(), "app").unwrap(),
+            ["core", "support", "app"]
+        );
+    }
+
+    #[test]
+    fn selected_independent_target_excludes_other_executables() {
+        assert_eq!(
+            selected_build_order(&project(), "worker").unwrap(),
+            ["worker"]
+        );
+    }
 }
 
 fn build_cargo_target(target: &Target, state: &BuildState, output: &Path) -> Result<()> {

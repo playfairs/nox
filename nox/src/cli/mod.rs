@@ -550,10 +550,14 @@ fn run_with_project(
             } else {
                 root.join(prefix)
             };
-            let requested_project = positional
-                .first()
-                .filter(|project| !Path::new(project).is_dir())
-                .map(String::as_str);
+            let install_projects = parser::parse_file_projects(&root.join("nox.build"))?;
+            let requested_project = requested_install_project(
+                positional.first().map(String::as_str),
+                positional
+                    .first()
+                    .is_some_and(|project| Path::new(project).is_dir()),
+                &install_projects,
+            );
             install_project(
                 &root,
                 &state_dir,
@@ -1476,6 +1480,14 @@ fn status(root: &Path, build_dir: &Path, requested_project: Option<&str>) -> Res
     commands::status::run(root, build_dir, requested_project)
 }
 
+fn requested_install_project<'a>(
+    requested: Option<&'a str>,
+    is_directory: bool,
+    projects: &[crate::core::model::Project],
+) -> Option<&'a str> {
+    requested.filter(|name| !is_directory || projects.iter().any(|project| project.name == *name))
+}
+
 fn select_install_project<'a>(
     projects: &'a [crate::core::model::Project],
     requested: Option<&str>,
@@ -1545,15 +1557,48 @@ fn default_install_prefix() -> PathBuf {
 mod tests {
     use super::{
         bump_version, install_project_with_origin_to_database, installed_package_record,
-        is_nix_managed_path, package_reference, parse_semver, run_with_project, standalone_file,
-        uninstall_installed_package_from, version_files,
+        is_nix_managed_path, package_reference, parse_semver, requested_install_project,
+        run_with_project, standalone_file, uninstall_installed_package_from, version_files,
     };
+    use crate::core::model::Project;
     use crate::pkgs::database::{
         InstallMethod, InstallOrigin, InstalledPackage, InstalledPackageDatabase,
     };
     use crate::rules::base::BaseRules;
+    use std::collections::HashMap;
     use std::fs;
     use std::path::{Path, PathBuf};
+
+    #[test]
+    fn project_name_takes_precedence_over_matching_directory() {
+        let project = |name: &str| Project {
+            name: name.to_string(),
+            version: None,
+            version_files: None,
+            description: String::new(),
+            license: String::new(),
+            edition: "1".to_string(),
+            dependencies: Vec::new(),
+            repository: None,
+            website: None,
+            authors: Vec::new(),
+            maintainers: Vec::new(),
+            targets: Vec::new(),
+            settings: HashMap::new(),
+            extra_env: HashMap::new(),
+        };
+        let projects = [project("nox"), project("noml")];
+
+        assert_eq!(
+            requested_install_project(Some("nox"), true, &projects),
+            Some("nox")
+        );
+        assert_eq!(requested_install_project(Some("."), true, &projects), None);
+        assert_eq!(
+            requested_install_project(Some("unknown"), false, &projects),
+            Some("unknown")
+        );
+    }
 
     #[test]
     fn resolves_short_command_aliases() {

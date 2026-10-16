@@ -179,7 +179,9 @@ nox uninstall
 ```
 ## `nox run [PATH|TARGET] [-- ARGS...]`
 
-Run either the current project, a named project target, or one source file. An existing source file runs standalone and does not require `nox.build` or `nox setup`; Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically. With no path, `.`, or a target name, Nox runs the initialized project.
+Run either the current project, a named project target, or one source file. An existing source file runs standalone and does not require `nox.build` or `nox setup`; Nox selects a file handler from the extension. Runtime-backed files run directly; C and C++ files are compiled into a temporary directory, executed, and cleaned up automatically. With no path, `.`, or a target name, Nox runs the initialized project when it has exactly one executable.
+
+For projects with multiple executables, `nox run` reports the ambiguity before compiling anything. `nox run TARGET` builds and runs only the named executable and its declared dependencies; unrelated targets are not built.
 
 ```sh
 nox run

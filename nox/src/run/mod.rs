@@ -73,8 +73,8 @@ impl<'a> ProjectRunner<'a> {
         .then_some(requested_target)
         .flatten();
         graph::validate(&project)?;
-        executor::build(&project, &state, self.jobs)?;
         let target = select_target(&project, requested_target)?;
+        executor::build_selected(&project, &target.name, &state, self.jobs)?;
         if matches!(
             &target.kind,
             TargetKind::Executable {
